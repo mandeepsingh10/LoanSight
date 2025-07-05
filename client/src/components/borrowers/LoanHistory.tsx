@@ -214,7 +214,6 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
     <Card>
       <CardHeader className="pb-4">
         <CardTitle>Loan History</CardTitle>
-        <div className="text-xs text-gray-500">Debug: isAdmin = {isAdmin ? 'true' : 'false'}</div>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
