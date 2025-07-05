@@ -70,7 +70,8 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
     const parts = text.split(regex);
     
     return parts.map((part, index) => {
-      if (regex.test(part)) {
+      // Check if this part matches the search term (case-insensitive)
+      if (part.toLowerCase() === searchTerm.toLowerCase()) {
         return <span key={index} className="bg-yellow-200 text-black font-semibold px-1 rounded">{part}</span>;
       }
       return part;
@@ -79,7 +80,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
 
   // Fetch loans for all borrowers
   const { data: borrowersWithLoans = [] } = useQuery({
-    queryKey: ["/api/borrowers", "with-loans"],
+    queryKey: ["/api/borrowers", "with-loans", borrowers.map(b => b.id), searchQuery],
     queryFn: async () => {
       const borrowersWithLoansData: BorrowerWithLoans[] = [];
       
@@ -262,6 +263,11 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
     }).format(amount);
   };
 
+  // Debug logging
+  console.log("BorrowerTable received borrowers:", borrowers.length);
+  console.log("BorrowerTable searchQuery:", searchQuery);
+  console.log("BorrowerTable borrowersWithLoans:", borrowersWithLoans.length);
+
   return (
     <>
       <div className="bg-black rounded-lg shadow overflow-hidden border border-gray-700">
@@ -302,7 +308,10 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
               {borrowersWithLoans.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-6 py-4 text-center text-gray-300">
-                    No borrowers found. Add your first borrower to get started.
+                    {searchQuery.trim() 
+                      ? `No borrowers found matching "${searchQuery}". Try adjusting your search terms.`
+                      : "No borrowers found. Add your first borrower to get started."
+                    }
                   </td>
                 </tr>
               ) : (
@@ -401,12 +410,12 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-white">
                               <div className="font-medium">
-                                {loan.guarantorName || borrower.guarantorName || "-"}
+                                {highlightText(loan.guarantorName || borrower.guarantorName || "-", searchQuery)}
                               </div>
                               <div className="text-xs text-gray-300">
-                                {loan.guarantorPhone || borrower.guarantorPhone || ""}
+                                {highlightText(loan.guarantorPhone || borrower.guarantorPhone || "", searchQuery)}
                                 {loan.guarantorPhone || borrower.guarantorPhone ? <br /> : null}
-                                {loan.guarantorAddress || borrower.guarantorAddress || ""}
+                                {highlightText(loan.guarantorAddress || borrower.guarantorAddress || "", searchQuery)}
                               </div>
                             </div>
                           </td>
@@ -417,7 +426,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="font-medium text-white">
-                              {getLoanStrategyDisplay(loan.loanStrategy)}
+                              {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -581,12 +590,12 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-white">
                                 <div className="font-medium">
-                                  {loan.guarantorName || borrower.guarantorName || "-"}
+                                  {highlightText(loan.guarantorName || borrower.guarantorName || "-", searchQuery)}
                                 </div>
                                 <div className="text-xs text-gray-300">
-                                  {loan.guarantorPhone || borrower.guarantorPhone || ""}
+                                  {highlightText(loan.guarantorPhone || borrower.guarantorPhone || "", searchQuery)}
                                   {loan.guarantorPhone || borrower.guarantorPhone ? <br /> : null}
-                                  {loan.guarantorAddress || borrower.guarantorAddress || ""}
+                                  {highlightText(loan.guarantorAddress || borrower.guarantorAddress || "", searchQuery)}
                                 </div>
                               </div>
                             </td>
@@ -597,7 +606,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="font-medium text-white">
-                                {getLoanStrategyDisplay(loan.loanStrategy)}
+                                {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -656,12 +665,12 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-white">
                                 <div className="font-medium">
-                                  {loan.guarantorName || borrower.guarantorName || "-"}
+                                  {highlightText(loan.guarantorName || borrower.guarantorName || "-", searchQuery)}
                                 </div>
                                 <div className="text-xs text-gray-300">
-                                  {loan.guarantorPhone || borrower.guarantorPhone || ""}
+                                  {highlightText(loan.guarantorPhone || borrower.guarantorPhone || "", searchQuery)}
                                   {loan.guarantorPhone || borrower.guarantorPhone ? <br /> : null}
-                                  {loan.guarantorAddress || borrower.guarantorAddress || ""}
+                                  {highlightText(loan.guarantorAddress || borrower.guarantorAddress || "", searchQuery)}
                                 </div>
                               </div>
                             </td>
@@ -672,7 +681,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="font-medium text-white">
-                                {getLoanStrategyDisplay(loan.loanStrategy)}
+                                {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">

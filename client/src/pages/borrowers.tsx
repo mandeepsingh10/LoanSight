@@ -33,12 +33,32 @@ const Borrowers = () => {
     if (!searchQuery.trim()) return true;
     
     const searchTerm = searchQuery.toLowerCase();
+    
+    // Get loan strategy display name for searching
+    const getLoanStrategyDisplay = (strategy: string) => {
+      switch (strategy) {
+        case "emi":
+          return "EMI";
+        case "flat":
+          return "FLAT";
+        case "custom":
+          return "CUSTOM";
+        case "gold_silver":
+          return "GOLD/SILVER";
+        default:
+          return strategy.toUpperCase();
+      }
+    };
+    
     const searchableText = [
       borrower.name || '',
       borrower.phone || '',
       borrower.address || '',
       borrower.guarantorName || '',
-      borrower.guarantorPhone || ''
+      borrower.guarantorPhone || '',
+      borrower.guarantorAddress || '',
+      borrower.loan?.loanStrategy ? getLoanStrategyDisplay(borrower.loan.loanStrategy) : '',
+      borrower.loan?.loanStrategy || '' // Also search the raw strategy value
     ].join(' ').toLowerCase();
     
     return searchableText.includes(searchTerm);
@@ -76,7 +96,7 @@ const Borrowers = () => {
           <div className="relative">
             <Input
               type="text"
-              placeholder="Search borrowers..."
+              placeholder="Search borrowers, phone, address, guarantor name/phone/address, or loan type (EMI, FLAT, CUSTOM, GOLD/SILVER)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="py-6 pl-10 pr-4 w-full rounded-lg"
@@ -106,6 +126,11 @@ const Borrowers = () => {
           >
             <DollarSign className="h-4 w-4" />
             <span>Cash</span>
+            {searchQuery.trim() && (
+              <span className="ml-1 text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+                {sortedCashBorrowers?.length || 0}
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger 
             value="gold-silver" 
@@ -113,6 +138,11 @@ const Borrowers = () => {
           >
             <Star className="h-4 w-4" />
             <span>Gold & Silver</span>
+            {searchQuery.trim() && (
+              <span className="ml-1 text-xs bg-yellow-600 text-white px-2 py-1 rounded-full">
+                {sortedGoldSilverBorrowers?.length || 0}
+              </span>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -127,15 +157,28 @@ const Borrowers = () => {
               </div>
             </div>
           ) : sortedCashBorrowers && sortedCashBorrowers.length > 0 ? (
-            <BorrowerTable borrowers={sortedCashBorrowers} searchQuery={searchQuery} />
+            <>
+              {/* Debug info */}
+              {searchQuery.trim() && (
+                <div className="mb-4 p-3 bg-blue-900 text-blue-200 rounded text-sm">
+                  Found {sortedCashBorrowers.length} cash borrowers matching "{searchQuery}"
+                </div>
+              )}
+              <BorrowerTable borrowers={sortedCashBorrowers} searchQuery={searchQuery} />
+            </>
           ) : (
             <div className="bg-black rounded-lg border border-gray-800 p-12 text-center">
               <DollarSign className="h-16 w-16 text-blue-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">No Cash Loans Yet</h3>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                {searchQuery.trim() ? `No Cash Loans Found for "${searchQuery}"` : "No Cash Loans Yet"}
+              </h3>
               <p className="text-white/70 mb-6">
-                Start adding borrowers with cash loans to see them here.
+                {searchQuery.trim() 
+                  ? "Try adjusting your search terms or check the Gold & Silver tab."
+                  : "Start adding borrowers with cash loans to see them here."
+                }
               </p>
-              {isAdmin && (
+              {isAdmin && !searchQuery.trim() && (
                 <Button 
                   onClick={() => setShowNewBorrowerModal(true)}
                   className="flex items-center space-x-2 mx-auto bg-blue-800 hover:bg-blue-700 text-white"
@@ -159,15 +202,28 @@ const Borrowers = () => {
               </div>
             </div>
           ) : sortedGoldSilverBorrowers && sortedGoldSilverBorrowers.length > 0 ? (
-            <BorrowerTable borrowers={sortedGoldSilverBorrowers} searchQuery={searchQuery} />
+            <>
+              {/* Debug info */}
+              {searchQuery.trim() && (
+                <div className="mb-4 p-3 bg-yellow-900 text-yellow-200 rounded text-sm">
+                  Found {sortedGoldSilverBorrowers.length} gold/silver borrowers matching "{searchQuery}"
+                </div>
+              )}
+              <BorrowerTable borrowers={sortedGoldSilverBorrowers} searchQuery={searchQuery} />
+            </>
           ) : (
             <div className="bg-black rounded-lg border border-gray-800 p-12 text-center">
               <Star className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">No Gold & Silver Loans Yet</h3>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                {searchQuery.trim() ? `No Gold & Silver Loans Found for "${searchQuery}"` : "No Gold & Silver Loans Yet"}
+              </h3>
               <p className="text-white/70 mb-6">
-                Start adding borrowers with gold and silver collateral loans to see them here.
+                {searchQuery.trim() 
+                  ? "Try adjusting your search terms or check the Cash tab."
+                  : "Start adding borrowers with gold and silver collateral loans to see them here."
+                }
               </p>
-              {isAdmin && (
+              {isAdmin && !searchQuery.trim() && (
                 <Button 
                   onClick={() => setShowNewBorrowerModal(true)}
                   className="flex items-center space-x-2 mx-auto bg-blue-800 hover:bg-blue-700 text-white"
