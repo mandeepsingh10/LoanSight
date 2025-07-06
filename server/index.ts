@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { registerRoutes } from "./routes";
@@ -7,9 +8,30 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
+// Validate required environment variables
+const requiredEnvVars = [
+  'DATABASE_URL',
+  'SESSION_SECRET',
+  'DEFAULT_ADMIN_USERNAME',
+  'DEFAULT_ADMIN_PASSWORD',
+  'DEFAULT_ADMIN_EMAIL',
+  'DEFAULT_VIEWER_USERNAME',
+  'DEFAULT_VIEWER_PASSWORD',
+  'DEFAULT_VIEWER_EMAIL',
+];
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+
+if (missingEnvVars.length > 0) {
+  console.error('❌ Missing required environment variables:', missingEnvVars.join(', '));
+  console.error('Please check your .env file or environment configuration.');
+  process.exit(1);
+}
+
+console.log('✅ Environment variables validated successfully');
+
 // Session configuration
 app.use(session({
-  secret: 'loansight-secret-key',
+  secret: process.env.SESSION_SECRET!,
   resave: false,
   saveUninitialized: false,
   cookie: { 

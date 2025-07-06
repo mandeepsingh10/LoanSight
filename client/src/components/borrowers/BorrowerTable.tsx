@@ -275,6 +275,9 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
           <table className="w-full">
             <thead className="bg-gray-900 text-left">
               <tr>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider w-12">
+                  No.
+                </th>
                 <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
                   Borrower
                 </th>
@@ -307,7 +310,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
             <tbody className="divide-y divide-gray-700">
               {borrowersWithLoans.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-4 text-center text-gray-300">
+                  <td colSpan={10} className="px-6 py-4 text-center text-gray-300">
                     {searchQuery.trim() 
                       ? `No borrowers found matching "${searchQuery}". Try adjusting your search terms.`
                       : "No borrowers found. Add your first borrower to get started."
@@ -315,7 +318,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                   </td>
                 </tr>
               ) : (
-                borrowersWithLoans.map((borrower) => {
+                borrowersWithLoans.map((borrower, index) => {
                   const loans = borrower.loans || [];
                   const hasMultipleLoans = loans.length > 1;
                   const isExpanded = expandedBorrowers.has(borrower.id);
@@ -324,6 +327,9 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                     // Borrower with no loans
                     return (
                   <tr key={borrower.id} className="hover:bg-[#111111]">
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-gray-400 font-medium">
+                      {index + 1}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white mr-3 ${
@@ -387,6 +393,9 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                     if (!hasMultipleLoans && loanIndex === 0) {
                       return (
                         <tr key={`${borrower.id}-${loan.id}`} className="hover:bg-[#111111]">
+                          <td className="px-6 py-4 whitespace-nowrap text-center text-gray-400 font-medium">
+                            {index + 1}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white mr-3 ${
@@ -486,6 +495,9 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                         {/* Borrower info row - only for first loan */}
                         {loanIndex === 0 && (
                           <tr key={`${borrower.id}-info`} className="hover:bg-[#111111]">
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-gray-400 font-medium">
+                              {index + 1}
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="relative mr-3">
@@ -579,6 +591,8 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                         {/* Loan details row - only show when expanded */}
                         {loanIndex === 0 && isExpanded && (
                           <tr key={`${borrower.id}-${loan.id}`} className="hover:bg-[#111111]">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="ml-10 font-bold text-white">
                                 • Loan {loanIndex + 1}
@@ -654,6 +668,8 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                         {/* Additional loan details rows - only show when expanded */}
                         {isExpanded && loanIndex > 0 && (
                           <tr key={`${borrower.id}-${loan.id}`} className="hover:bg-[#111111]">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="ml-10 font-bold text-white">
                                 • Loan {loanIndex + 1}

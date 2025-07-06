@@ -71,47 +71,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Create default admin user
         await AuthService.createUser({
-          username: 'admin',
-          password: 'Admin@2024!',
+          username: process.env.DEFAULT_ADMIN_USERNAME!,
+          password: process.env.DEFAULT_ADMIN_PASSWORD!,
           role: UserRole.ADMIN,
           firstName: 'System',
           lastName: 'Administrator',
-          email: 'admin@loansight.com'
+          email: process.env.DEFAULT_ADMIN_EMAIL!
         });
-        console.log('Default admin user created: admin');
-        
-        // Create your user account
-        await AuthService.createUser({
-          username: 'mandeepsingh10',
-          password: 'Md@Singh2024!',
-          role: UserRole.ADMIN,
-          firstName: 'Mandeep',
-          lastName: 'Singh',
-          email: 'mandeep@example.com'
-        });
-        console.log('User account created: mandeepsingh10');
-        
-        // Create Lakshay's user account
-        await AuthService.createUser({
-          username: 'lakshayb',
-          password: 'Lk$Batra2024#',
-          role: UserRole.ADMIN,
-          firstName: 'Lakshay',
-          lastName: 'Batra',
-          email: 'lakshay@example.com'
-        });
-        console.log('User account created: lakshayb');
+        console.log(`Default admin user created: ${process.env.DEFAULT_ADMIN_USERNAME}`);
         
         // Create viewer user for read-only access
         await AuthService.createUser({
-          username: 'viewer',
-          password: 'View@2024!',
+          username: process.env.DEFAULT_VIEWER_USERNAME!,
+          password: process.env.DEFAULT_VIEWER_PASSWORD!,
           role: UserRole.VIEWER,
           firstName: 'View',
           lastName: 'Only',
-          email: 'viewer@example.com'
+          email: process.env.DEFAULT_VIEWER_EMAIL!
         });
-        console.log('Viewer account created: viewer');
+        console.log(`Viewer account created: ${process.env.DEFAULT_VIEWER_USERNAME}`);
         
         console.log('Default users initialization completed successfully!');
       }
