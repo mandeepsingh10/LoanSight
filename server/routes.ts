@@ -121,16 +121,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
-  // Manager or Admin middleware
-  const requireManagerOrAdmin = (req: Request, res: Response, next: any) => {
-    const role = (req.session as any)?.role;
-    if ((req.session as any)?.authenticated && (role === UserRole.ADMIN || role === UserRole.MANAGER)) {
-      next();
-    } else {
-      res.status(403).json({ message: 'Manager or Admin access required' });
-    }
-  };
-
   // Configure multer for photo uploads
   const multerStorage = multer.diskStorage({
     destination: (req, file, cb) => {

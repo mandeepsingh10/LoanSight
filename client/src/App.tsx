@@ -14,9 +14,17 @@ import Payments from "./pages/payments";
 import DefaultersNew from "./pages/defaulters-new";
 import Reports from "./pages/reports";
 import Settings from "./pages/settings";
+import Account from "./pages/account";
+import UserManagement from "./pages/user-management";
 import LoginPage from "./pages/login";
 import { AuthProvider, useAuth } from "./providers/AuthProvider";
 import { useMobile } from "./hooks/useMobile";
+
+// Wrapper component for LoginPage that provides the onLogin prop
+function LoginPageWrapper() {
+  const { login } = useAuth();
+  return <LoginPage onLogin={login} />;
+}
 
 function Router() {
   return (
@@ -28,6 +36,9 @@ function Router() {
       <Route path="/defaulters" component={DefaultersNew} />
       <Route path="/reports" component={Reports} />
       <Route path="/settings" component={Settings} />
+      <Route path="/account" component={Account} />
+      <Route path="/user-management" component={UserManagement} />
+      <Route path="/login" component={LoginPageWrapper} />
       <Route component={NotFound} />
     </Switch>
   );

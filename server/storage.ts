@@ -597,7 +597,7 @@ export class DatabaseStorage implements IStorage {
 
   // User management operations
   async getUsers(): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.isActive, true));
+    return await db.select().from(users);
   }
 
   async getUserById(id: number): Promise<User | undefined> {

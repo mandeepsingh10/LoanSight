@@ -100,8 +100,7 @@ export const payments = pgTable("payments", {
 // User roles enum
 export enum UserRole {
   ADMIN = "admin",
-  VIEWER = "viewer",
-  MANAGER = "manager"
+  VIEWER = "viewer"
 }
 
 // User management table
@@ -159,7 +158,7 @@ export const createUserSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address").optional(),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum([UserRole.ADMIN, UserRole.VIEWER, UserRole.MANAGER]).default(UserRole.VIEWER),
+  role: z.enum([UserRole.ADMIN, UserRole.VIEWER]).default(UserRole.VIEWER),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
 });

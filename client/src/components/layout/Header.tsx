@@ -33,6 +33,8 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
     "/defaulters": "Defaulters",
     "/reports": "", // Remove title for reports page
     "/settings": "Settings",
+    "/account": "Account",
+    "/user-management": "User Management",
   };
   
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,6 +97,20 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                       <h2 className="text-2xl font-bold text-white">Settings</h2>
                     </div>
                   );
+                case "/account":
+                  return (
+                    <div className="flex items-center space-x-3">
+                      <User className="h-8 w-8 text-white" />
+                      <h2 className="text-2xl font-bold text-white">Account</h2>
+                    </div>
+                  );
+                case "/user-management":
+                  return (
+                    <div className="flex items-center space-x-3">
+                      <Users className="h-8 w-8 text-white" />
+                      <h2 className="text-2xl font-bold text-white">User Management</h2>
+                    </div>
+                  );
                 default:
                   return (
                     <h2 className="text-2xl font-bold text-white">
@@ -119,25 +135,13 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                 </Avatar>
                 <div className="flex flex-col items-start justify-center">
                   <span className="text-sm font-medium text-white leading-tight">{username}</span>
-                  <span className="text-xs text-white/70 leading-tight">
-                    {isAdmin ? "Administrator" : "Read-Only"}
-                  </span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-white/70 ml-1" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{username}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {isAdmin ? "Administrator Access" : "Read-Only Access"}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="p-0">
-                <div className="flex items-center justify-between w-full px-2 py-1.5">
+                <div className="flex items-center justify-between w-full">
                   <span className="text-sm">Access Level</span>
                   <Badge 
                     variant={isAdmin ? "default" : "secondary"} 
@@ -150,7 +154,24 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                     {isAdmin ? "Admin" : "Viewer"}
                   </Badge>
                 </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => window.location.href = '/account'}
+                className="cursor-pointer"
+              >
+                <User className="mr-2 h-4 w-4" />
+                <span>Account</span>
               </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem 
+                  onClick={() => window.location.href = '/user-management'}
+                  className="cursor-pointer"
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  <span>User Management</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={logout}
