@@ -71,47 +71,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Create default admin user
         await AuthService.createUser({
-          username: 'admin',
-          password: 'Admin@2024!',
+          username: process.env.DEFAULT_ADMIN_USERNAME!,
+          password: process.env.DEFAULT_ADMIN_PASSWORD!,
           role: UserRole.ADMIN,
           firstName: 'System',
           lastName: 'Administrator',
-          email: 'admin@loansight.com'
+          email: process.env.DEFAULT_ADMIN_EMAIL!
         });
-        console.log('Default admin user created: admin');
-        
-        // Create your user account
-        await AuthService.createUser({
-          username: 'mandeepsingh10',
-          password: 'Md@Singh2024!',
-          role: UserRole.ADMIN,
-          firstName: 'Mandeep',
-          lastName: 'Singh',
-          email: 'mandeep@example.com'
-        });
-        console.log('User account created: mandeepsingh10');
-        
-        // Create Lakshay's user account
-        await AuthService.createUser({
-          username: 'lakshayb',
-          password: 'Lk$Batra2024#',
-          role: UserRole.ADMIN,
-          firstName: 'Lakshay',
-          lastName: 'Batra',
-          email: 'lakshay@example.com'
-        });
-        console.log('User account created: lakshayb');
+        console.log(`Default admin user created: ${process.env.DEFAULT_ADMIN_USERNAME}`);
         
         // Create viewer user for read-only access
         await AuthService.createUser({
-          username: 'viewer',
-          password: 'View@2024!',
+          username: process.env.DEFAULT_VIEWER_USERNAME!,
+          password: process.env.DEFAULT_VIEWER_PASSWORD!,
           role: UserRole.VIEWER,
           firstName: 'View',
           lastName: 'Only',
-          email: 'viewer@example.com'
+          email: process.env.DEFAULT_VIEWER_EMAIL!
         });
-        console.log('Viewer account created: viewer');
+        console.log(`Viewer account created: ${process.env.DEFAULT_VIEWER_USERNAME}`);
         
         console.log('Default users initialization completed successfully!');
       }
@@ -140,16 +118,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       next();
     } else {
       res.status(403).json({ message: 'Admin access required' });
-    }
-  };
-
-  // Manager or Admin middleware
-  const requireManagerOrAdmin = (req: Request, res: Response, next: any) => {
-    const role = (req.session as any)?.role;
-    if ((req.session as any)?.authenticated && (role === UserRole.ADMIN || role === UserRole.MANAGER)) {
-      next();
-    } else {
-      res.status(403).json({ message: 'Manager or Admin access required' });
     }
   };
 
@@ -1712,6 +1680,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting all data:', error);
       handleError(error, res);
+    }
+  });
+
+  // Signup endpoint
+  app.post('/api/auth/signup', async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ message: 'Username and password are required' });
+      }
+
+      // Check if user already exists
+      const existingUser = await AuthService.getUserById(username);
+      if (existingUser) {
+        return res.status(409).json({ message: 'Username already exists' });
+      }
+
+      // Create user (default role: viewer)
+      const user = await AuthService.createUser({
+        username,
+        password,
+        role: 'viewer',
+      });
+
+      if (user) {
+        return res.status(201).json({ message: 'Signup successful', user: { username: user.username, id: user.id } });
+      } else {
+        return res.status(500).json({ message: 'Failed to create user' });
+      }
+    } catch (error: any) {
+      if (error.message && error.message.includes('exists')) {
+        return res.status(409).json({ message: error.message });
+      }
+      return res.status(500).json({ message: 'Internal server error' });
     }
   });
 

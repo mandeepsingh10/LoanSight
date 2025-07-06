@@ -164,7 +164,7 @@ const Borrowers = () => {
                   Found {sortedCashBorrowers.length} cash borrowers matching "{searchQuery}"
                 </div>
               )}
-              <BorrowerTable borrowers={sortedCashBorrowers} searchQuery={searchQuery} />
+            <BorrowerTable borrowers={sortedCashBorrowers} searchQuery={searchQuery} />
             </>
           ) : (
             <div className="bg-black rounded-lg border border-gray-800 p-12 text-center">
@@ -209,7 +209,7 @@ const Borrowers = () => {
                   Found {sortedGoldSilverBorrowers.length} gold/silver borrowers matching "{searchQuery}"
                 </div>
               )}
-              <BorrowerTable borrowers={sortedGoldSilverBorrowers} searchQuery={searchQuery} />
+            <BorrowerTable borrowers={sortedGoldSilverBorrowers} searchQuery={searchQuery} />
             </>
           ) : (
             <div className="bg-black rounded-lg border border-gray-800 p-12 text-center">

@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Menu, Search, LogOut, User, ChevronDown, FileText, BarChart3, Users, AlertTriangle, Settings, CreditCard } from "lucide-react";
+import { Menu, Search, LogOut, User, ChevronDown, FileText, BarChart3, Users, AlertTriangle, Settings, CreditCard, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,8 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
     "/defaulters": "Defaulters",
     "/reports": "", // Remove title for reports page
     "/settings": "Settings",
+    "/account": "Account",
+    "/user-management": "User Management",
   };
   
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,7 +45,7 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
     <header className="bg-black border-b border-gray-800 shadow-sm sticky top-0 z-5">
       <div className="flex items-center justify-between px-6 py-4">
         {/* Left side - Menu button and page title */}
-        <div className="flex items-center">
+        <div className="flex items-center flex-1">
           <button 
             className="md:hidden mr-4" 
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -95,7 +97,39 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                       <h2 className="text-2xl font-bold text-white">Settings</h2>
                     </div>
                   );
+                case "/account":
+                  return (
+                    <div className="flex items-center space-x-3">
+                      <User className="h-8 w-8 text-white" />
+                      <h2 className="text-2xl font-bold text-white">Account</h2>
+                    </div>
+                  );
+                case "/user-management":
+                  return (
+                    <div className="flex items-center space-x-3">
+                      <Users className="h-8 w-8 text-white" />
+                      <h2 className="text-2xl font-bold text-white">User Management</h2>
+                    </div>
+                  );
                 default:
+                  // Check if it's an edit borrower route
+                  if (location.startsWith('/edit-borrower/')) {
+                    return (
+                      <div className="flex items-center w-full">
+                        <Button
+                          variant="ghost"
+                          onClick={() => window.location.href = '/borrowers'}
+                          className="flex items-center gap-2 text-gray-300 hover:text-white hover:bg-gray-800 p-3 absolute left-6"
+                        >
+                          <ArrowLeft className="h-6 w-6" />
+                        </Button>
+                        <div className="flex items-center space-x-3 mx-auto">
+                          <Users className="h-8 w-8 text-white" />
+                          <h2 className="text-2xl font-bold text-white">Borrower Details</h2>
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
                     <h2 className="text-2xl font-bold text-white">
                       {tabTitles[location] || "Page Not Found"}
@@ -119,25 +153,13 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                 </Avatar>
                 <div className="flex flex-col items-start justify-center">
                   <span className="text-sm font-medium text-white leading-tight">{username}</span>
-                  <span className="text-xs text-white/70 leading-tight">
-                    {isAdmin ? "Administrator" : "Read-Only"}
-                  </span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-white/70 ml-1" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{username}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {isAdmin ? "Administrator Access" : "Read-Only Access"}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="p-0">
-                <div className="flex items-center justify-between w-full px-2 py-1.5">
+                <div className="flex items-center justify-between w-full">
                   <span className="text-sm">Access Level</span>
                   <Badge 
                     variant={isAdmin ? "default" : "secondary"} 
@@ -150,7 +172,24 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                     {isAdmin ? "Admin" : "Viewer"}
                   </Badge>
                 </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => window.location.href = '/account'}
+                className="cursor-pointer"
+              >
+                <User className="mr-2 h-4 w-4" />
+                <span>Account</span>
               </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem 
+                  onClick={() => window.location.href = '/user-management'}
+                  className="cursor-pointer"
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  <span>User Management</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={logout}

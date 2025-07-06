@@ -16,6 +16,14 @@ A comprehensive loan management platform that simplifies borrower tracking, paym
 - Docker and Docker Compose installed on your machine
 - Git (to clone the repository)
 
+## Git Security
+
+⚠️ **Important**: This repository is configured for secure Git storage:
+- All secrets are stored in environment variables (not hardcoded)
+- `.env` files are excluded from Git via `.gitignore`
+- Default user credentials are configurable via environment variables
+- Session secrets are externalized for security
+
 ## Running Locally with Docker
 
 ### 1. Clone the Repository
@@ -63,7 +71,7 @@ The application runs with two services:
 - **Port**: 5432
 - **Database**: loansight
 - **Username**: loansight
-- **Password**: loansight123
+- **Password**: Set in your `.env` file (see `.env.example` for template)
 
 ## Development
 
@@ -73,7 +81,7 @@ For development without Docker:
 npm install
 
 # Set up environment variables
-export DATABASE_URL="postgresql://loansight:loansight123@localhost:5432/loansight"
+export DATABASE_URL="postgresql://loansight:your_password@localhost:5432/loansight"
 
 # Start development server
 npm run dev
@@ -107,20 +115,38 @@ docker-compose up --build
 
 ## Environment Variables
 
-Create a `.env` file to customize settings:
+Create a `.env` file to customize settings. **Never commit this file to Git!**
+
+### Required Variables
 ```env
-# Database
-DATABASE_URL=postgresql://loansight:loansight123@db:5432/loansight
+# Database Configuration
+DATABASE_URL=postgresql://loansight:your_password@db:5432/loansight
 PGHOST=db
 PGPORT=5432
 PGUSER=loansight
-PGPASSWORD=loansight123
+PGPASSWORD=your_password
 PGDATABASE=loansight
 
-# Application
-NODE_ENV=production
+# Session Configuration
+SESSION_SECRET=your-super-secret-session-key-here
+
+# Default Users (only for initial setup - remove after first run)
+DEFAULT_ADMIN_USERNAME=admin
+DEFAULT_ADMIN_PASSWORD=your-admin-password
+DEFAULT_VIEWER_USERNAME=viewer
+DEFAULT_VIEWER_PASSWORD=your-viewer-password
+
+# Application Configuration
+NODE_ENV=development
+HOST=localhost
 PORT=5000
 ```
+
+### Security Notes
+- **Change default passwords** after first login
+- **Use strong, unique passwords** for all users
+- **Rotate session secrets** regularly in production
+- **Never share or commit** your `.env` file
 
 ## Troubleshooting
 
@@ -168,6 +194,27 @@ docker-compose logs -f app
 - Role-based access control (Admin/Viewer)
 - Secure delete confirmations
 - Password protection for sensitive operations
+- Environment variable validation at startup
+- Secure secret management
+
+## Security Best Practices
+
+### Environment Variables
+- **Never commit `.env` files to Git** - they contain sensitive secrets
+- Use `.env.example` as a template for required variables
+- All secrets are validated at startup to prevent insecure configurations
+- Default user credentials should be changed after first login
+
+### Secret Management
+- Store all secrets in environment variables, never hardcode them
+- Use strong, unique passwords for all default users
+- Regularly rotate session secrets in production
+- Consider using a secrets management service for production deployments
+
+### Database Security
+- Use strong database passwords
+- Limit database access to application containers only
+- Regularly backup and encrypt sensitive data
 
 ## Technology Stack
 

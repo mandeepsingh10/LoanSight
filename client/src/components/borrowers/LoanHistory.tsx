@@ -311,9 +311,6 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Type "delete" to confirm:
-            </label>
             <input
               type="text"
               value={deleteConfirmText}

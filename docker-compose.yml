@@ -8,12 +8,19 @@ services:
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
-      - DATABASE_URL=postgresql://loansight:loansight123@db:5432/loansight
-      - PGHOST=db
-      - PGPORT=5432
-      - PGUSER=loansight
-      - PGPASSWORD=loansight123
-      - PGDATABASE=loansight
+      - DATABASE_URL=${DATABASE_URL}
+      - PGHOST=${PGHOST}
+      - PGPORT=${PGPORT}
+      - PGUSER=${PGUSER}
+      - PGPASSWORD=${PGPASSWORD}
+      - PGDATABASE=${PGDATABASE}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - DEFAULT_ADMIN_USERNAME=${DEFAULT_ADMIN_USERNAME}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL}
+      - DEFAULT_VIEWER_USERNAME=${DEFAULT_VIEWER_USERNAME}
+      - DEFAULT_VIEWER_PASSWORD=${DEFAULT_VIEWER_PASSWORD}
+      - DEFAULT_VIEWER_EMAIL=${DEFAULT_VIEWER_EMAIL}
     depends_on:
       db:
         condition: service_healthy
@@ -25,9 +32,9 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_DB=loansight
-      - POSTGRES_USER=loansight
-      - POSTGRES_PASSWORD=loansight123
+      - POSTGRES_DB=${PGDATABASE}
+      - POSTGRES_USER=${PGUSER}
+      - POSTGRES_PASSWORD=${PGPASSWORD}
     ports:
       - "5432:5432"
     volumes:
