@@ -45,7 +45,8 @@ import {
   Trash2,
   Check,
   ChevronDown,
-  CreditCard
+  CreditCard,
+  Pencil
 } from "lucide-react";
 import { Loan, Payment } from "@/types";
 
@@ -615,13 +616,13 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                               </>
                             ) : (
                               <Button
-                                size="sm"
                                 variant="ghost"
+                                size="sm"
                                 onClick={() => handleEditPayment(payment)}
                                 className="h-8 w-8 p-0 hover:!bg-black"
                                 title="Edit Payment"
                               >
-                                <Edit className="h-4 w-4" />
+                                <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
                               </Button>
                             )}
                             <Button
@@ -709,6 +710,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                 }
               }}
               disabled={addSinglePaymentMutation.isPending || !singlePaymentForm.amount || !singlePaymentForm.dueDate}
+              className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
             >
               {addSinglePaymentMutation.isPending ? "Adding..." : "Add Payment"}
             </Button>
@@ -782,6 +784,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                 }
               }}
               disabled={addBulkPaymentsMutation.isPending || bulkPaymentForm.months <= 0 || !bulkPaymentForm.customDueDate}
+              className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
             >
               {addBulkPaymentsMutation.isPending ? "Adding..." : "Add Payments"}
             </Button>
@@ -872,6 +875,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
               type="button"
               onClick={handleSubmitCollection}
               disabled={collectPaymentMutation.isPending}
+              className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
             >
               {collectPaymentMutation.isPending ? "Processing..." : "Save"}
             </Button>
@@ -947,8 +951,8 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
               {deletePayment && (
                 <>
                   Are you sure you want to permanently delete this payment?
-                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <div className="text-sm text-gray-900">
+                  <div className="mt-3 p-3 bg-red-900/20 border border-red-600 rounded-md">
+                    <div className="text-sm text-white">
                       <p><strong>Amount:</strong> {formatCurrency(deletePayment.amount)}</p>
                       <p><strong>Due Date:</strong> {format(new Date(deletePayment.dueDate), "MMM d, yyyy")}</p>
                       <p><strong>Status:</strong> <span className="capitalize">{deletePayment.status.replace('_', ' ')}</span></p>

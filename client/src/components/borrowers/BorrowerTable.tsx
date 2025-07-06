@@ -364,7 +364,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => setSelectedBorrower(borrower.id)}
+                          onClick={() => navigate(`/edit-borrower/${borrower.id}`)}
                         >
                           {isAdmin ? (
                             <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
@@ -458,7 +458,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                onClick={() => setSelectedBorrower(borrower.id)}
+                                onClick={() => navigate(`/edit-borrower/${borrower.id}`)}
                               >
                                 {isAdmin ? (
                                   <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
@@ -566,7 +566,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
-                                  onClick={() => setSelectedBorrower(borrower.id)}
+                                  onClick={() => navigate(`/edit-borrower/${borrower.id}`)}
                                 >
                                   {isAdmin ? (
                                     <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
@@ -759,16 +759,6 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
         </div>
       </div>
 
-      {/* Borrower Details Modal */}
-      {selectedBorrower && (
-        <BorrowerDetails
-          borrowerId={selectedBorrower}
-          isOpen={selectedBorrower !== null}
-          onClose={() => setSelectedBorrower(null)}
-          readOnly={!isAdmin}
-        />
-      )}
-
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={confirmDelete !== null} onOpenChange={handleDeleteDialogClose}>
         <AlertDialogContent>
@@ -780,9 +770,6 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Type "delete" to confirm:
-            </label>
             <input
               type="text"
               value={deleteConfirmText}
@@ -820,9 +807,6 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Type "delete" to confirm:
-            </label>
             <input
               type="text"
               value={deleteConfirmText}

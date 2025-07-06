@@ -738,6 +738,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
           <Button
             type="submit"
             disabled={isSubmitting}
+            className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
           >
             {isSubmitting ? "Processing..." : "Create Loan"}
           </Button>

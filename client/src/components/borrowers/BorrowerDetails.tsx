@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { CheckCircle, AlertCircle, Clock, Check, ChevronDown, Edit, Trash2, Save, X, Upload, Camera, Eye, MoreVertical } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, Check, ChevronDown, Edit, Trash2, Save, X, Upload, Camera, Eye, MoreVertical, ArrowLeft, User, Pencil } from "lucide-react";
 import { Payment } from "@/types";
 import {
   Card,
@@ -767,111 +767,92 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
     );
 
     if (fullScreen) {
-      return noDataContent;
-    }
-
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-4xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Borrower Details</DialogTitle>
-          </DialogHeader>
-          {noDataContent}
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[95vw] max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] bg-black border-gray-700">
-          <div className="overflow-y-auto max-h-[95vh] text-white p-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-40">
-                <p className="text-gray-300">Loading...</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Borrower Name and Photo */}
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="relative">
-                    {borrower && borrower.photoUrl ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <div className="cursor-pointer">
-                            <img
-                              src={borrower.photoUrl}
-                              alt={`${borrower.name}'s photo`}
-                              className="w-12 h-12 rounded-lg object-cover border-2 border-gray-600"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-48">
-                          <DropdownMenuItem onClick={() => setShowPhotoPreview(true)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Photo
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Change Photo
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <div className="flex items-center justify-center w-12 h-12 rounded-lg border-2 border-gray-600 cursor-pointer hover:border-gray-400 hover:bg-gray-700 transition-colors">
-                            <Camera className="h-6 w-6 text-gray-400" />
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-48">
-                          <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload Photo
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                    {isUploadingPhoto && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
-                        <div className="text-white text-xs">...</div>
-                      </div>
-                    )}
-                    {/* Hidden file input */}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                      className="hidden"
-                      disabled={isUploadingPhoto}
-                    />
-                  </div>
-                  <div className="text-xl font-bold text-white">
-                    {borrower ? borrower.name : "Borrower Details"}
-                  </div>
+      return (
+        <div className="p-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-40">
+              <p className="text-gray-300">Loading...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Borrower Name and Photo */}
+              <div className="flex items-center gap-4 mb-4">
+                <div className="relative">
+                  {borrower && borrower.photoUrl ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <div className="cursor-pointer">
+                          <img
+                            src={borrower.photoUrl}
+                            alt={`${borrower.name}'s photo`}
+                            className="w-12 h-12 rounded-lg object-cover border-2 border-gray-600"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        <DropdownMenuItem onClick={() => setShowPhotoPreview(true)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Photo
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Change Photo
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <div className="flex items-center justify-center w-12 h-12 rounded-lg border-2 border-gray-600 cursor-pointer hover:border-gray-400 hover:bg-gray-700 transition-colors">
+                          <Camera className="h-6 w-6 text-gray-400" />
+                        </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload Photo
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  {isUploadingPhoto && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                      <div className="text-white text-xs">...</div>
+                    </div>
+                  )}
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    disabled={isUploadingPhoto}
+                  />
                 </div>
-                
-                {/* Separator */}
-                <div className="border-t border-gray-700 my-4"></div>
-                
+                <div className="text-xl font-bold text-white">
+                  {borrower ? borrower.name : "Borrower Details"}
+                </div>
+              </div>
+              
+              {/* Separator */}
+              <div className="border-t border-gray-700 my-4"></div>
+              
               {/* Borrower Details */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                   <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-lg">Personal Information</CardTitle>
                     <Button
-                      size="sm"
                       variant="ghost"
+                      size="icon"
                       onClick={() => setEditPersonalInfo(!editPersonalInfo)}
-                      className="h-8 w-8 p-0 hover:bg-gray-200"
                     >
-                      {editPersonalInfo ? <X className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+                      {editPersonalInfo ? <X className="h-4 w-4" /> : <Pencil size={16} className="text-blue-400 hover:text-blue-300" />}
                     </Button>
                   </CardHeader>
                   <CardContent>
@@ -949,6 +930,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                               documentNumber: personalForm.documentNumber
                             })}
                             disabled={updateBorrowerMutation.isPending}
+                            className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
                           >
                             <Save className="h-4 w-4 mr-1" />
                             Save
@@ -999,44 +981,43 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                   <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-lg">Guarantor Details</CardTitle>
                     <Button
-                      size="sm"
                       variant="ghost"
+                      size="icon"
                       onClick={() => setEditGuarantorInfo(!editGuarantorInfo)}
-                      className="h-8 w-8 p-0 hover:bg-gray-200"
                     >
-                      {editGuarantorInfo ? <X className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+                      {editGuarantorInfo ? <X className="h-4 w-4" /> : <Pencil size={16} className="text-blue-400 hover:text-blue-300" />}
                     </Button>
                   </CardHeader>
                   <CardContent>
                     {editGuarantorInfo ? (
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium text-gray-500">Guarantor Name</label>
+                          <label className="text-sm font-medium text-white">Guarantor Name</label>
                           <input
                             type="text"
                             value={guarantorForm.guarantorName}
                             onChange={(e) => setGuarantorForm({...guarantorForm, guarantorName: e.target.value})}
-                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
                             placeholder="Enter guarantor name"
                           />
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-500">Guarantor Phone</label>
+                          <label className="text-sm font-medium text-white">Guarantor Phone</label>
                           <input
                             type="text"
                             value={guarantorForm.guarantorPhone}
                             onChange={(e) => setGuarantorForm({...guarantorForm, guarantorPhone: e.target.value})}
-                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
                             placeholder="Enter guarantor phone"
                           />
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-500">Guarantor Address</label>
+                          <label className="text-sm font-medium text-white">Guarantor Address</label>
                           <textarea
                             value={guarantorForm.guarantorAddress}
                             onChange={(e) => setGuarantorForm({...guarantorForm, guarantorAddress: e.target.value})}
                             rows={3}
-                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
                             placeholder="Enter guarantor address"
                           />
                         </div>
@@ -1056,6 +1037,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                               guarantorAddress: guarantorForm.guarantorAddress
                             })}
                             disabled={updateBorrowerMutation.isPending}
+                            className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
                           >
                             <Save className="h-4 w-4 mr-1" />
                             Save
@@ -1094,9 +1076,8 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                     <CardTitle className="text-lg">Borrower Summary</CardTitle>
                     <Button
                       size="sm"
-                      variant="outline"
                       onClick={handleAddLoan}
-                      className="h-8 text-xs"
+                      className="h-8 text-xs bg-blue-800 hover:bg-blue-700 text-white"
                     >
                       + Add Loan
                     </Button>
@@ -1168,9 +1149,9 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                         <Button
                           size="sm"
                           onClick={handleAddLoan}
-                          className="w-full"
+                          className="w-full bg-blue-800 hover:bg-blue-700 text-white"
                         >
-                          + Create First Loan
+                          + Add Loan
                         </Button>
                       </div>
                     )}
@@ -1184,11 +1165,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                   <CardTitle className="text-lg font-bold text-white">Notes</CardTitle>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={() => setEditNotes(!editNotes)}
-                    className="text-gray-400 hover:text-white"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -1198,7 +1178,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                         placeholder="Add notes about this borrower..."
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        className="bg-gray-800 border-gray-600 text-white min-h-[120px]"
+                        className="bg-black border-white/20 text-white min-h-[120px]"
                         rows={5}
                       />
                       <div className="flex gap-2">
@@ -1221,6 +1201,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                             notesUpdateMutation.mutate({ notes });
                           }}
                           disabled={notesUpdateMutation.isPending}
+                          className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
                         >
                           <Save className="h-4 w-4 mr-1" />
                           Save Notes
@@ -1248,10 +1229,485 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                 onViewLoan={handleViewLoan}
               />
             </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-y-auto text-white p-6 bg-black min-h-screen">
+        {noDataContent}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="overflow-y-auto text-white p-6 bg-black min-h-screen">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-40">
+            <p className="text-gray-300">Loading...</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+                {/* Borrower Name and Photo */}
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="relative">
+                    {borrower && borrower.photoUrl ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <div className="cursor-pointer">
+                            <img
+                              src={borrower.photoUrl}
+                              alt={`${borrower.name}'s photo`}
+                              className="w-12 h-12 rounded-lg object-cover border-2 border-gray-600"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          <DropdownMenuItem onClick={() => setShowPhotoPreview(true)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Photo
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Change Photo
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <div className="flex items-center justify-center w-12 h-12 rounded-lg border-2 border-gray-600 cursor-pointer hover:border-gray-400 hover:bg-gray-700 transition-colors">
+                            <Camera className="h-6 w-6 text-gray-400" />
+                          </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload Photo
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    {isUploadingPhoto && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                        <div className="text-white text-xs">...</div>
+                      </div>
+                    )}
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                      disabled={isUploadingPhoto}
+                    />
+                  </div>
+                  <div className="text-xl font-bold text-white">
+                    {borrower ? borrower.name : "Borrower Details"}
+                  </div>
+                </div>
+                
+                {/* Separator */}
+                <div className="border-t border-gray-700 my-4"></div>
+                
+                {/* Borrower Details */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                      <CardTitle className="text-lg">Personal Information</CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditPersonalInfo(!editPersonalInfo)}
+                      >
+                        {editPersonalInfo ? <X className="h-4 w-4" /> : <Pencil size={16} className="text-blue-400 hover:text-blue-300" />}
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      {editPersonalInfo ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <label className="text-sm font-medium text-white">Name</label>
+                              <input
+                                type="text"
+                                value={personalForm.name}
+                                onChange={(e) => setPersonalForm({...personalForm, name: e.target.value})}
+                                className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-white">Phone</label>
+                            <input
+                              type="text"
+                              value={personalForm.phone}
+                              onChange={(e) => setPersonalForm({...personalForm, phone: e.target.value})}
+                              className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-white">Address</label>
+                            <textarea
+                              value={personalForm.address}
+                              onChange={(e) => setPersonalForm({...personalForm, address: e.target.value})}
+                              rows={3}
+                              className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-white">Document Type</label>
+                            <select
+                              value={personalForm.documentType}
+                              onChange={(e) => setPersonalForm({...personalForm, documentType: e.target.value})}
+                              className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
+                            >
+                              <option value="">Select Document Type</option>
+                              <option value="aadhaar">Aadhaar Card</option>
+                              <option value="pan">PAN Card</option>
+                              <option value="voter">Voter ID</option>
+                              <option value="driving">Driving License</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-white">Document Number</label>
+                            <input
+                              type="text"
+                              value={personalForm.documentNumber || ''}
+                              onChange={(e) => setPersonalForm({...personalForm, documentNumber: e.target.value})}
+                              placeholder="Enter document number"
+                              className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
+                            />
+                          </div>
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditPersonalInfo(false)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => updateBorrowerMutation.mutate({
+                                name: personalForm.name,
+                                phone: personalForm.phone,
+                                address: personalForm.address,
+                                documentType: personalForm.documentType,
+                                documentNumber: personalForm.documentNumber
+                              })}
+                              disabled={updateBorrowerMutation.isPending}
+                              className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
+                            >
+                              <Save className="h-4 w-4 mr-1" />
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <dl className="space-y-2 text-sm font-mono">
+                          <div className="flex">
+                            <dt className="text-gray-400 w-32">Name:</dt>
+                            <dd className="text-white">{borrower.name}</dd>
+                          </div>
+                          
+                          <div className="flex">
+                            <dt className="text-gray-400 w-32">Phone:</dt>
+                            <dd className="text-white">{borrower.phone}</dd>
+                          </div>
+                          
+                          <div className="flex">
+                            <dt className="text-gray-400 w-32">ID Number:</dt>
+                            <dd className="text-white">{borrower.id}</dd>
+                          </div>
+                          
+                          <div className="flex">
+                            <dt className="text-gray-400 w-32">Address:</dt>
+                            <dd className="text-white">{borrower.address}</dd>
+                          </div>
+                          
+                          {borrower.documentType && (
+                            <div className="flex">
+                              <dt className="text-gray-400 w-32">Document Type:</dt>
+                              <dd className="text-white capitalize">{borrower.documentType}</dd>
+                            </div>
+                          )}
+                          
+                          {borrower.documentNumber && (
+                            <div className="flex">
+                              <dt className="text-gray-400 w-32">Document Number:</dt>
+                              <dd className="text-white">{borrower.documentNumber}</dd>
+                            </div>
+                          )}
+                        </dl>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                      <CardTitle className="text-lg">Guarantor Details</CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditGuarantorInfo(!editGuarantorInfo)}
+                      >
+                        {editGuarantorInfo ? <X className="h-4 w-4" /> : <Pencil size={16} className="text-blue-400 hover:text-blue-300" />}
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      {editGuarantorInfo ? (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium text-white">Guarantor Name</label>
+                            <input
+                              type="text"
+                              value={guarantorForm.guarantorName}
+                              onChange={(e) => setGuarantorForm({...guarantorForm, guarantorName: e.target.value})}
+                              className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
+                              placeholder="Enter guarantor name"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-white">Guarantor Phone</label>
+                            <input
+                              type="text"
+                              value={guarantorForm.guarantorPhone}
+                              onChange={(e) => setGuarantorForm({...guarantorForm, guarantorPhone: e.target.value})}
+                              className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
+                              placeholder="Enter guarantor phone"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-white">Guarantor Address</label>
+                            <textarea
+                              value={guarantorForm.guarantorAddress}
+                              onChange={(e) => setGuarantorForm({...guarantorForm, guarantorAddress: e.target.value})}
+                              rows={3}
+                              className="w-full mt-1 px-3 py-2 border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black text-white"
+                              placeholder="Enter guarantor address"
+                            />
+                          </div>
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditGuarantorInfo(false)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => updateBorrowerMutation.mutate({
+                                guarantorName: guarantorForm.guarantorName,
+                                guarantorPhone: guarantorForm.guarantorPhone,
+                                guarantorAddress: guarantorForm.guarantorAddress
+                              })}
+                              disabled={updateBorrowerMutation.isPending}
+                              className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
+                            >
+                              <Save className="h-4 w-4 mr-1" />
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        borrower.guarantorName ? (
+                          <dl className="grid grid-cols-4 gap-3 text-sm">
+                            <dt className="col-span-1 font-medium text-gray-500">Name:</dt>
+                            <dd className="col-span-3">{borrower.guarantorName}</dd>
+                            
+                            {borrower.guarantorPhone && (
+                              <>
+                                <dt className="col-span-1 font-medium text-gray-500">Phone:</dt>
+                                <dd className="col-span-3">{borrower.guarantorPhone}</dd>
+                              </>
+                            )}
+                            
+                            {borrower.guarantorAddress && (
+                              <>
+                                <dt className="col-span-1 font-medium text-gray-500">Address:</dt>
+                                <dd className="col-span-3">{borrower.guarantorAddress}</dd>
+                              </>
+                            )}
+                          </dl>
+                        ) : (
+                          <p className="text-gray-500 text-sm">No guarantor information available</p>
+                        )
+                      )}
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                      <CardTitle className="text-lg">Borrower Summary</CardTitle>
+                      {loans && loans.length > 0 && (
+                        <Button
+                          size="sm"
+                          onClick={handleAddLoan}
+                          className="h-8 text-xs bg-blue-800 hover:bg-blue-700 text-white"
+                        >
+                          + Add Loan
+                        </Button>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      {loans && loans.length > 0 ? (
+                        <div className="space-y-3">
+                          {/* Summary Stats */}
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="text-center p-2 bg-gray-800 rounded">
+                              <div className="text-gray-400 text-xs">Active Loans</div>
+                              <div className="text-white font-bold text-lg">
+                                {loans.filter((loan: any) => loan.status === 'active').length}
+                              </div>
+                            </div>
+                            <div className="text-center p-2 bg-gray-800 rounded">
+                              <div className="text-gray-400 text-xs">Total Amount</div>
+                              <div className="text-white font-bold text-lg">
+                                {formatCurrency(loans.reduce((sum: number, loan: any) => sum + loan.amount, 0))}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Quick Info */}
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Total Loans:</span>
+                              <span className="text-white font-medium">{loans.length}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Completed:</span>
+                              <span className="text-green-400 font-medium">
+                                {loans.filter((loan: any) => loan.status === 'completed').length}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Defaulted:</span>
+                              <span className="text-red-400 font-medium">
+                                {loans.filter((loan: any) => loan.status === 'defaulted').length}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Next Payment Info */}
+                          {(() => {
+                            const activeLoans = loans.filter((loan: any) => loan.status === 'active');
+                            if (activeLoans.length > 0) {
+                              const nextPayments = activeLoans.map((loan: any) => loan.nextPayment).filter(Boolean);
+                              if (nextPayments.length > 0) {
+                                return (
+                                  <div className="mt-3 p-2 bg-blue-900/20 border border-blue-700 rounded">
+                                    <div className="text-blue-400 text-xs font-medium">Next Payment</div>
+                                    <div className="text-white text-sm">
+                                      {nextPayments.length === 1 
+                                        ? nextPayments[0]
+                                        : `${nextPayments.length} loans have upcoming payments`
+                                      }
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6">
+                          <div className="text-gray-400 text-sm mb-3">No loans yet</div>
+                          <Button
+                            size="sm"
+                            onClick={handleAddLoan}
+                            className="w-full bg-blue-800 hover:bg-blue-700 text-white"
+                          >
+                            + Add Loan
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Notes Card */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-lg font-bold text-white">Notes</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditNotes(!editNotes)}
+                    >
+                      <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {editNotes ? (
+                      <div className="space-y-3">
+                        <Textarea
+                          placeholder="Add notes about this borrower..."
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          className="bg-gray-800 border-gray-600 text-white min-h-[120px]"
+                          rows={5}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditNotes(false);
+                              setNotes(borrower?.notes || "");
+                            }}
+                            className="border-gray-600 text-gray-400 hover:text-white"
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              console.log("Saving notes:", notes);
+                              notesUpdateMutation.mutate({ notes });
+                            }}
+                            disabled={notesUpdateMutation.isPending}
+                            className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
+                          >
+                            <Save className="h-4 w-4 mr-1" />
+                            Save Notes
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="min-h-[80px]">
+                        {notes ? (
+                          <p className="text-white text-sm whitespace-pre-wrap">{notes}</p>
+                        ) : (
+                          <p className="text-gray-500 text-sm italic">No notes added yet. Click the edit button to add notes.</p>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Separator />
+                
+                {/* Loan History */}
+                <LoanHistory 
+                  borrowerId={borrowerId}
+                  onAddLoan={handleAddLoan}
+                  onViewLoan={handleViewLoan}
+                />
+              </div>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Payment Collection Dialog */}
       <Dialog open={collectionDialog} onOpenChange={setCollectionDialog}>
@@ -1335,6 +1791,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
               type="button"
               onClick={handleSubmitCollection}
               disabled={collectPaymentMutation.isPending}
+              className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
             >
               {collectPaymentMutation.isPending ? "Processing..." : "Save"}
             </Button>

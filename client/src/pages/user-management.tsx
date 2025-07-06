@@ -18,7 +18,8 @@ import {
   UserCheck,
   UserX,
   Mail,
-  Calendar
+  Calendar,
+  Pencil
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -409,11 +410,10 @@ const UserManagement = () => {
                       <div className="flex items-center justify-end space-x-2">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
                           onClick={() => handleEditUser(user)}
-                          className="text-blue-400 hover:text-blue-300"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
                         </Button>
                         <Button
                           variant="ghost"

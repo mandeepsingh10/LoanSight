@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Menu, Search, LogOut, User, ChevronDown, FileText, BarChart3, Users, AlertTriangle, Settings, CreditCard } from "lucide-react";
+import { Menu, Search, LogOut, User, ChevronDown, FileText, BarChart3, Users, AlertTriangle, Settings, CreditCard, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
     <header className="bg-black border-b border-gray-800 shadow-sm sticky top-0 z-5">
       <div className="flex items-center justify-between px-6 py-4">
         {/* Left side - Menu button and page title */}
-        <div className="flex items-center">
+        <div className="flex items-center flex-1">
           <button 
             className="md:hidden mr-4" 
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -112,6 +112,24 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                     </div>
                   );
                 default:
+                  // Check if it's an edit borrower route
+                  if (location.startsWith('/edit-borrower/')) {
+                    return (
+                      <div className="flex items-center w-full">
+                        <Button
+                          variant="ghost"
+                          onClick={() => window.location.href = '/borrowers'}
+                          className="flex items-center gap-2 text-gray-300 hover:text-white hover:bg-gray-800 p-3 absolute left-6"
+                        >
+                          <ArrowLeft className="h-6 w-6" />
+                        </Button>
+                        <div className="flex items-center space-x-3 mx-auto">
+                          <Users className="h-8 w-8 text-white" />
+                          <h2 className="text-2xl font-bold text-white">Borrower Details</h2>
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
                     <h2 className="text-2xl font-bold text-white">
                       {tabTitles[location] || "Page Not Found"}
