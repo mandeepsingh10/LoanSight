@@ -71,6 +71,7 @@ function TypewriterSubtitle() {
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
+  const [shake, setShake] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -124,8 +125,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         description: error.message || "Invalid username or password",
         variant: "destructive",
       });
+      setShake(true);
     },
   });
+
+  useEffect(() => {
+    if (shake) {
+      const timeout = setTimeout(() => setShake(false), 600);
+      return () => clearTimeout(timeout);
+    }
+  }, [shake]);
 
   const onSubmit = (data: LoginFormValues) => {
     loginMutation.mutate(data);
@@ -140,7 +149,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <TypewriterSubtitle />
         </div>
         {/* Login Card */}
-        <div className="glow-border">
+        <div className={`glow-border${shake ? ' shake' : ''}`}>
           <Card className="bg-black border-gray-700 shadow-2xl">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-white text-center">
@@ -161,10 +170,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                         <FormLabel className="text-white">Username</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <User className="absolute left-3 top-3 h-4 w-4 text-white" />
                             <Input
                               placeholder="Enter your username"
-                              className="pl-10 bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                              className="pl-10 login-input text-white placeholder-gray-400 focus:border-blue-500"
                               {...field}
                             />
                           </div>
@@ -182,11 +191,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                         <FormLabel className="text-white">Password</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-white" />
                             <Input
                               type={showPassword ? "text" : "password"}
                               placeholder="Enter your password"
-                              className="pl-10 pr-10 bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                              className="pl-10 pr-10 login-input text-white placeholder-gray-400 focus:border-blue-500"
                               {...field}
                             />
                             <Button

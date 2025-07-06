@@ -293,3 +293,25 @@ html {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+.login-input {
+  background: #131826;
+  border: 1.5px solid #26304a;
+  box-shadow: 0 2px 12px 0 rgba(0, 40, 80, 0.10);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.login-input:focus {
+  border-color: #00eaff;
+  box-shadow: 0 0 0 2px #00eaff33;
+  background: #1a2133;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+  20%, 40%, 60%, 80% { transform: translateX(8px); }
+  100% { transform: translateX(0); }
+}
+.shake {
+  animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) both;
+}
