@@ -1683,6 +1683,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Signup endpoint
+  app.post('/api/auth/signup', async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ message: 'Username and password are required' });
+      }
+
+      // Check if user already exists
+      const existingUser = await AuthService.getUserById(username);
+      if (existingUser) {
+        return res.status(409).json({ message: 'Username already exists' });
+      }
+
+      // Create user (default role: viewer)
+      const user = await AuthService.createUser({
+        username,
+        password,
+        role: 'viewer',
+      });
+
+      if (user) {
+        return res.status(201).json({ message: 'Signup successful', user: { username: user.username, id: user.id } });
+      } else {
+        return res.status(500).json({ message: 'Failed to create user' });
+      }
+    } catch (error: any) {
+      if (error.message && error.message.includes('exists')) {
+        return res.status(409).json({ message: error.message });
+      }
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   const httpServer = createServer(app);
 
 

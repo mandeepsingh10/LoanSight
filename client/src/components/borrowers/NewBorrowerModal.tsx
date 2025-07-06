@@ -555,12 +555,14 @@ const NewBorrowerModal = ({ isOpen, onClose }: NewBorrowerModalProps) => {
                   type="button"
                   variant="outline"
                   onClick={handleCancel}
+                  className="border-gray-600 text-white hover:bg-gray-800"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={borrowerMutation.isPending}
+                  className="bg-blue-800 hover:bg-blue-700 text-white"
                 >
                   {borrowerMutation.isPending ? "Processing..." : "Next"}
                 </Button>

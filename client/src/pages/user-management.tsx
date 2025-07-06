@@ -260,10 +260,11 @@ const UserManagement = () => {
 
   const handleUpdateUser = () => {
     if (!selectedUser) return;
-    
+    const userData = { ...editForm };
+    if (userData.email === '') delete userData.email;
     updateUserMutation.mutate({
       userId: selectedUser.id,
-      userData: editForm
+      userData
     });
   };
 
