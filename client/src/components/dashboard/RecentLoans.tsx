@@ -2,11 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/ui/status-badge";
 import { format } from "date-fns";
-import { BorrowerDetails } from "@/components/borrowers/BorrowerDetails";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -28,7 +27,7 @@ interface BorrowerWithLoans {
 }
 
 const RecentLoans = () => {
-  const [selectedBorrower, setSelectedBorrower] = useState<number | null>(null);
+  const [, navigate] = useLocation();
   const [isAmountVisible, setIsAmountVisible] = useState(false);
   const [expandedBorrowers, setExpandedBorrowers] = useState<Set<number>>(new Set());
 
@@ -44,6 +43,10 @@ const RecentLoans = () => {
       newExpanded.add(borrowerId);
     }
     setExpandedBorrowers(newExpanded);
+  };
+
+  const handleViewDetails = (borrowerId: number) => {
+    navigate(`/edit-borrower/${borrowerId}`);
   };
   
   const { data: recentLoans, isLoading } = useQuery({
@@ -121,19 +124,19 @@ const RecentLoans = () => {
                     <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                       Amount
                     </th>
-                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                       Loan Type
                     </th>
-                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                       Next Payment
                     </th>
-                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                       Action
                     </th>
                   </tr>
@@ -159,13 +162,13 @@ const RecentLoans = () => {
                                 <div className="text-white font-medium">{loan.borrowerName || 'Unknown'}</div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-white">
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                               {isAmountVisible ? 
                                 `₹${loan.amount ? loan.amount.toLocaleString() : '0'}` : 
                                 '••••••'
                               }
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white capitalize">
                                 {loan.loanStrategy ? 
                                   loan.loanStrategy.toUpperCase() : 
@@ -173,9 +176,9 @@ const RecentLoans = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <StatusBadge status={loan.status || 'unknown'} />
+                              <StatusBadge status={loan.status || 'unknown'} className="mx-auto" />
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-white">
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                               {(() => {
                                 if (!loan.nextPayment || 
                                     typeof loan.nextPayment !== 'string' || 
@@ -193,11 +196,11 @@ const RecentLoans = () => {
                                 }
                               })()}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <Button 
                                 variant="link" 
                                 className="text-blue-400 hover:text-blue-300 text-sm font-medium h-auto p-0"
-                                onClick={() => setSelectedBorrower(loan.borrowerId)}
+                                onClick={() => handleViewDetails(loan.borrowerId)}
                               >
                                 View Details
                               </Button>
@@ -249,10 +252,10 @@ const RecentLoans = () => {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-white">
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
                                 {!isExpanded ? "" : ""}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <span className="font-medium text-white capitalize">
                                   {!isExpanded ? "" : ""}
                                 </span>
@@ -264,14 +267,14 @@ const RecentLoans = () => {
                                   <span className="text-gray-400"></span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-white">
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
                                 {!isExpanded ? "" : ""}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <Button 
                                   variant="link" 
                                   className="text-blue-400 hover:text-blue-300 text-sm font-medium h-auto p-0"
-                                  onClick={() => setSelectedBorrower(loan.borrowerId)}
+                                  onClick={() => handleViewDetails(loan.borrowerId)}
                                 >
                                   View Details
                                 </Button>
@@ -287,13 +290,13 @@ const RecentLoans = () => {
                                   • Loan {loanIndex + 1}
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-white">
+                              <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                                 {isAmountVisible ? 
                                   `₹${loan.amount ? loan.amount.toLocaleString() : '0'}` : 
                                   '••••••'
                                 }
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <span className="font-medium text-white capitalize">
                                   {loan.loanStrategy ? 
                                     loan.loanStrategy.toUpperCase() : 
@@ -301,9 +304,9 @@ const RecentLoans = () => {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <StatusBadge status={loan.status || 'unknown'} />
+                                <StatusBadge status={loan.status || 'unknown'} className="mx-auto" />
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-white">
+                              <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                                 {(() => {
                                   if (!loan.nextPayment || 
                                       typeof loan.nextPayment !== 'string' || 
@@ -321,11 +324,11 @@ const RecentLoans = () => {
                                   }
                                 })()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <Button 
                                   variant="link" 
                                   className="text-blue-400 hover:text-blue-300 text-sm font-medium h-auto p-0"
-                                  onClick={() => setSelectedBorrower(loan.borrowerId)}
+                                  onClick={() => handleViewDetails(loan.borrowerId)}
                                 >
                                   View Details
                                 </Button>
@@ -341,13 +344,13 @@ const RecentLoans = () => {
                                   • Loan {loanIndex + 1}
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-white">
+                              <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                                 {isAmountVisible ? 
                                   `₹${loan.amount ? loan.amount.toLocaleString() : '0'}` : 
                                   '••••••'
                                 }
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <span className="font-medium text-white capitalize">
                                   {loan.loanStrategy ? 
                                     loan.loanStrategy.toUpperCase() : 
@@ -355,9 +358,9 @@ const RecentLoans = () => {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <StatusBadge status={loan.status || 'unknown'} />
+                                <StatusBadge status={loan.status || 'unknown'} className="mx-auto" />
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-white">
+                              <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                                 {(() => {
                                   if (!loan.nextPayment || 
                                       typeof loan.nextPayment !== 'string' || 
@@ -375,11 +378,11 @@ const RecentLoans = () => {
                                   }
                                 })()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <Button 
                                   variant="link" 
                                   className="text-blue-400 hover:text-blue-300 text-sm font-medium h-auto p-0"
-                                  onClick={() => setSelectedBorrower(loan.borrowerId)}
+                                  onClick={() => handleViewDetails(loan.borrowerId)}
                                 >
                                   View Details
                                 </Button>
@@ -407,15 +410,6 @@ const RecentLoans = () => {
           </div>
         </CardContent>
       </Card>
-      
-      {selectedBorrower && (
-        <BorrowerDetails
-          borrowerId={selectedBorrower}
-          isOpen={!!selectedBorrower}
-          onClose={() => setSelectedBorrower(null)}
-          fullScreen={true}
-        />
-      )}
     </>
   );
 };
