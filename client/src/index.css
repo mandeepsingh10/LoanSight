@@ -278,6 +278,10 @@ html {
   opacity: 0.92;
   pointer-events: none;
 }
+@keyframes starGlow {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
 .login-bg::after {
   content: '';
   position: absolute;
@@ -305,6 +309,7 @@ html {
     radial-gradient(circle, #fff 0.5px, transparent 1px) 70% 20% / 2px 2px no-repeat,
     radial-gradient(circle, #fff 0.6px, transparent 1.1px) 40% 95% / 2px 2px no-repeat;
   opacity: 0.8;
+  animation: starGlow 5s ease-in-out infinite;
 }
 .login-bg > * {
   position: relative;
