@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="16" fill="#181a2a"/>
+  <text x="50%" y="54%" text-anchor="middle" font-size="38" font-family="Inter, Arial, sans-serif" fill="#00eaff" font-weight="bold" dy=".1em">₹</text>
+</svg> 
