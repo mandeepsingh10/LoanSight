@@ -223,7 +223,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                     onClick={() => handleTabSwitch('login')}
                     type="button"
                   >
-                    Login
+                    Sign In
                   </button>
                   <button
                     className={`relative flex-1 z-10 font-semibold text-lg transition-colors duration-300 ${tab === 'signup' ? 'text-white' : 'text-blue-300'}`}
@@ -231,7 +231,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                     onClick={() => handleTabSwitch('signup')}
                     type="button"
                   >
-                    Signup
+                    Sign Up
                   </button>
                 </div>
               </div>
