@@ -131,6 +131,9 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
     netWeight: 0
   });
 
+  // Add state for gold items
+  const [goldItems, setGoldItems] = useState<any[]>([]);
+
   // Pure EMI calculation function (no side effects)
   const calculateEMI = () => {
     const principal = parseFloat(calculatorValues.principal);
@@ -683,8 +686,22 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                            type="button"
                            className="bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white px-3 py-1 rounded-lg text-xs font-medium shadow-lg border border-amber-400/50 backdrop-blur-sm"
                            onClick={() => {
-                             // TODO: Add logic to save item details to DB
-                             console.log("Add Items button clicked");
+                             setGoldItems([
+                               ...goldItems,
+                               {
+                                 itemName: form.getValues('itemName'),
+                                 metalWeight: form.getValues('metalWeight'),
+                                 purity: form.getValues('purity'),
+                                 netWeight: goldSilverValues.netWeight.toFixed(3),
+                                 notes: form.getValues('goldSilverNotes'),
+                                 pmType: 'gold',
+                               },
+                             ]);
+                             // Clear fields after adding
+                             form.setValue('itemName', '');
+                             form.setValue('metalWeight', '');
+                             form.setValue('purity', '');
+                             setGoldSilverValues({ metalWeight: '', purity: '', netWeight: 0 });
                            }}
                          >
                            <Plus className="h-2.5 w-2.5 mr-0.5" />
@@ -718,6 +735,36 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
             )}
           />
         </div>
+
+        {goldItems.length > 0 && (
+          <div className="mt-8">
+            <h5 className="text-white font-semibold mb-2">Added Items</h5>
+            <div className="overflow-x-auto rounded-lg border border-amber-400/30 bg-black/40">
+              <table className="min-w-full text-sm text-white">
+                <thead>
+                  <tr className="bg-amber-900/40">
+                    <th className="px-4 py-2 text-left">Item</th>
+                    <th className="px-4 py-2 text-left">Weight (g)</th>
+                    <th className="px-4 py-2 text-left">Purity (%)</th>
+                    <th className="px-4 py-2 text-left">Net Weight</th>
+                    <th className="px-4 py-2 text-left">Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {goldItems.map((item, idx) => (
+                    <tr key={idx} className="border-t border-amber-400/10">
+                      <td className="px-4 py-2">{item.itemName}</td>
+                      <td className="px-4 py-2">{item.metalWeight}</td>
+                      <td className="px-4 py-2">{item.purity}</td>
+                      <td className="px-4 py-2">{item.netWeight}</td>
+                      <td className="px-4 py-2">{item.notes}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         <Separator className="my-4" />
 
