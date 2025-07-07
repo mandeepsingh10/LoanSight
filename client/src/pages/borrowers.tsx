@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, DollarSign, Star, Plus } from "lucide-react";
+import { Search, DollarSign, Plus, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,6 +10,46 @@ import { useContext } from "react";
 import { AppContext } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
+
+// Stylized mountain of coins SVG icon
+const CoinIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 64 40"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    width={props.width || 32}
+    height={props.height || 32}
+    {...props}
+  >
+    {/* Stack 1 (left, silver/gold) */}
+    <ellipse cx="12" cy="32" rx="7" ry="2.5" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="1" />
+    <ellipse cx="12" cy="28" rx="7" ry="2.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1" />
+    <ellipse cx="12" cy="24" rx="7" ry="2.5" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="1" />
+    {/* Stack 2 (center left, taller) */}
+    <ellipse cx="26" cy="36" rx="7" ry="2.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1" />
+    <ellipse cx="26" cy="32" rx="7" ry="2.5" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="1" />
+    <ellipse cx="26" cy="28" rx="7" ry="2.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1" />
+    <ellipse cx="26" cy="24" rx="7" ry="2.5" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="1" />
+    <ellipse cx="26" cy="20" rx="7" ry="2.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1" />
+    {/* Stack 3 (center, tallest) */}
+    <ellipse cx="38" cy="38" rx="7" ry="2.5" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="1" />
+    <ellipse cx="38" cy="34" rx="7" ry="2.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1" />
+    <ellipse cx="38" cy="30" rx="7" ry="2.5" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="1" />
+    <ellipse cx="38" cy="26" rx="7" ry="2.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1" />
+    <ellipse cx="38" cy="22" rx="7" ry="2.5" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="1" />
+    <ellipse cx="38" cy="18" rx="7" ry="2.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1" />
+    {/* Stack 4 (center right, medium) */}
+    <ellipse cx="50" cy="34" rx="7" ry="2.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1" />
+    <ellipse cx="50" cy="30" rx="7" ry="2.5" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="1" />
+    <ellipse cx="50" cy="26" rx="7" ry="2.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1" />
+    {/* Stack 5 (right, short) */}
+    <ellipse cx="58" cy="32" rx="5" ry="2" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="0.8" />
+    <ellipse cx="58" cy="28" rx="5" ry="2" fill="#FFD700" stroke="#B8860B" strokeWidth="0.8" />
+    {/* Coins in front */}
+    <ellipse cx="20" cy="39" rx="6" ry="2" fill="#FFD700" stroke="#B8860B" strokeWidth="0.8" />
+    <ellipse cx="44" cy="39" rx="6" ry="2" fill="#C0C0C0" stroke="#A9A9A9" strokeWidth="0.8" />
+  </svg>
+);
 
 const Borrowers = () => {
   const [showNewBorrowerModal, setShowNewBorrowerModal] = useState(false);
@@ -213,7 +253,7 @@ const Borrowers = () => {
             </>
           ) : (
             <div className="bg-black rounded-lg border border-gray-800 p-12 text-center">
-              <Star className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
+              <CoinIcon width={96} height={96} className="mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-white mb-2">
                 {searchQuery.trim() ? `No Gold & Silver Loans Found for "${searchQuery}"` : "No Gold & Silver Loans Yet"}
               </h3>
@@ -228,8 +268,8 @@ const Borrowers = () => {
                   onClick={() => setShowNewBorrowerModal(true)}
                   className="flex items-center space-x-2 mx-auto bg-blue-800 hover:bg-blue-700 text-white"
                 >
-                  <Star className="h-4 w-4" />
-                  <span>Add First Gold/Silver Loan</span>
+                  <span className="text-lg font-bold mr-1">+</span>
+                  <span>Add Loan</span>
                 </Button>
               )}
             </div>
