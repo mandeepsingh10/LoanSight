@@ -463,13 +463,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   style={{ willChange: 'transform' }}
                 >
                   <div className="w-1/2 flex justify-center items-center text-blue-300 text-center" style={{ minHeight: '1.5rem' }}>
-                    Not a member?{' '}
+                    Not a member?&nbsp;
                     <button type="button" className="underline text-blue-400 hover:text-blue-200" onClick={() => handleTabSwitch('signup')}>
-                      Signup now
+                      Sign up
                     </button>
                   </div>
                   <div className="w-1/2 flex justify-center items-center text-blue-300 text-center" style={{ minHeight: '1.5rem' }}>
-                    Already have an account?{' '}
+                    Already have an account?&nbsp;
                     <button type="button" className="underline text-blue-400 hover:text-blue-200" onClick={() => handleTabSwitch('login')}>
                       Sign in
                     </button>
