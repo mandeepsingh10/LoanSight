@@ -281,28 +281,28 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                 <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
                   Borrower
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Contact
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Guarantor
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Loan Amount
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Loan Type
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   EMI Amount
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Next Payment
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Status
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Actions
                 </th>
               </tr>
@@ -342,13 +342,13 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center">
                       <div className="text-sm">
                         <div className="text-white">{highlightText(borrower.phone, searchQuery)}</div>
                         <div className="text-xs text-gray-300">{highlightText(borrower.address, searchQuery)}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="text-sm text-white">
                         {borrower.guarantorName ? highlightText(borrower.guarantorName, searchQuery) : "-"}
                       </div>
@@ -359,8 +359,8 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <StatusBadge status={borrower.status} />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-3">
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center space-x-3">
                         <Button 
                           variant="ghost" 
                           size="icon"
@@ -410,13 +410,13 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 text-center">
                             <div className="text-sm">
                               <div className="text-white">{highlightText(borrower.phone, searchQuery)}</div>
                               <div className="text-xs text-gray-300">{highlightText(borrower.address, searchQuery)}</div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
                             <div className="text-sm text-white">
                               <div className="font-medium">
                                 {highlightText(loan.guarantorName || borrower.guarantorName || "-", searchQuery)}
@@ -428,17 +428,17 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
                             <div className="font-medium text-white">
                               {formatCurrency(loan.amount)}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
                             <span className="font-medium text-white">
                               {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
                             <span className="font-medium text-white">
                               {loan.loanStrategy === 'custom' || loan.loanStrategy === 'gold_silver'
                                 ? 'NA'
@@ -447,14 +447,14 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                                   : formatCurrency(loan.flatMonthlyAmount || 0)}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-white">
+                          <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                             {loan.nextPayment || "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <StatusBadge status={loan.status} />
+                            <StatusBadge status={loan.status} className="mx-auto" />
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center space-x-3">
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <div className="flex items-center justify-center space-x-3">
                               <Button 
                                 variant="ghost" 
                                 size="icon"
@@ -527,31 +527,31 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 text-center">
                               <div className="text-sm">
                                 <div className="text-white">{highlightText(borrower.phone, searchQuery)}</div>
                                 <div className="text-xs text-gray-300">{highlightText(borrower.address, searchQuery)}</div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="text-sm text-gray-400"></div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="font-medium text-white">
                                 {!isExpanded ? "" : ""}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white">
                                 {!isExpanded ? "" : ""}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white">
                                 {!isExpanded ? "" : ""}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-white">
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                               {!isExpanded ? "" : ""}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -561,8 +561,8 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                                 ""
                               )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center space-x-3">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center space-x-3">
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
@@ -598,10 +598,10 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                                 • Loan {loanIndex + 1}
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 text-center">
                               <div className="text-sm text-gray-400"></div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="text-sm text-white">
                                 <div className="font-medium">
                                   {highlightText(loan.guarantorName || borrower.guarantorName || "-", searchQuery)}
@@ -613,17 +613,17 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="font-medium text-white">
                                 {formatCurrency(loan.amount)}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white">
                                 {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white">
                                 {loan.loanStrategy === 'custom' || loan.loanStrategy === 'gold_silver'
                                   ? 'NA'
@@ -632,14 +632,14 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                                     : formatCurrency(loan.flatMonthlyAmount || 0)}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-white">
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                               {loan.nextPayment || "-"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <StatusBadge status={loan.status} />
+                              <StatusBadge status={loan.status} className="mx-auto" />
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center space-x-3">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center space-x-3">
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
@@ -675,10 +675,10 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                                 • Loan {loanIndex + 1}
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 text-center">
                               <div className="text-sm text-gray-400"></div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="text-sm text-white">
                                 <div className="font-medium">
                                   {highlightText(loan.guarantorName || borrower.guarantorName || "-", searchQuery)}
@@ -690,17 +690,17 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="font-medium text-white">
                                 {formatCurrency(loan.amount)}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white">
                                 {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white">
                                 {loan.loanStrategy === 'custom' || loan.loanStrategy === 'gold_silver'
                                   ? 'NA'
@@ -709,14 +709,14 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                                     : formatCurrency(loan.flatMonthlyAmount || 0)}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-white">
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                               {loan.nextPayment || "-"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <StatusBadge status={loan.status} />
+                              <StatusBadge status={loan.status} className="mx-auto" />
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center space-x-3">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center space-x-3">
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
