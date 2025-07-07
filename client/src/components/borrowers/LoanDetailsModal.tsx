@@ -229,7 +229,10 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         paidAmount: totalPaidAmount,
         dueAmount: 0, // Clear the due amount
         paymentMethod: settlementPayment.paymentMethod || 'cash',
-        notes: `Settlement: ${settlementNotes}` + (settlementPayment.notes ? ` | Original: ${settlementPayment.notes}` : '')
+        notes:
+          `₹${totalPaidAmount} was settled on ${format(new Date(settlementDate), 'MMM d, yyyy')}.` +
+          (settlementNotes ? ` ${settlementNotes}` : '') +
+          (settlementPayment.notes ? ` | Original: ${settlementPayment.notes}` : ''),
       };
       
       const response = await apiRequest('POST', `/api/payments/${settlementPayment.id}/collect`, updateData);
@@ -574,6 +577,11 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                               {payment.paymentMethod && (
                                 <div className="text-xs text-gray-500 capitalize">
                                   {payment.paymentMethod.replace('_', ' ')}
+                                </div>
+                              )}
+                              {payment.notes && (
+                                <div className="text-xs text-gray-700 whitespace-pre-line mt-1">
+                                  {payment.notes}
                                 </div>
                               )}
                             </div>
