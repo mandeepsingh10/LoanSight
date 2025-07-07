@@ -270,14 +270,34 @@ html {
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(circle at 10% 10%, #1a237e22 0%, transparent 60%),
-    radial-gradient(circle at 90% 10%, #3a47d522 0%, transparent 60%),
-    radial-gradient(circle at 10% 90%, #7f53ac22 0%, transparent 60%),
-    radial-gradient(circle at 90% 90%, #00eaff22 0%, transparent 60%),
-    linear-gradient(120deg, #000 80%, #232946 100%);
-  filter: blur(40px) brightness(1.02) saturate(1.05);
-  opacity: 0.85;
+    radial-gradient(ellipse 90% 70% at 10% 10%, #101a2dcc 0%, transparent 80%),
+    radial-gradient(ellipse 80% 60% at 90% 90%, #0a1322cc 0%, transparent 80%),
+    radial-gradient(ellipse 70% 50% at 80% 20%, #101a2daa 0%, transparent 80%);
+  filter: blur(20px) brightness(0.85) saturate(1.05);
+  opacity: 0.92;
   pointer-events: none;
+}
+.login-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  /* Star field: manually placed small dots */
+  background:
+    /* white stars */
+    radial-gradient(circle, #fff 0.7px, transparent 1.2px) 10% 20% / 2px 2px no-repeat,
+    radial-gradient(circle, #fff 0.8px, transparent 1.3px) 30% 70% / 2px 2px no-repeat,
+    radial-gradient(circle, #fff 0.6px, transparent 1.1px) 80% 40% / 2px 2px no-repeat,
+    radial-gradient(circle, #fff 0.9px, transparent 1.4px) 60% 80% / 2px 2px no-repeat,
+    radial-gradient(circle, #fff 0.7px, transparent 1.2px) 50% 10% / 2px 2px no-repeat,
+    /* blue stars */
+    radial-gradient(circle, #3a47d5cc 0.7px, transparent 1.2px) 25% 35% / 2px 2px no-repeat,
+    radial-gradient(circle, #00eaffcc 0.8px, transparent 1.3px) 70% 60% / 2px 2px no-repeat,
+    radial-gradient(circle, #7f53acbb 0.6px, transparent 1.1px) 40% 50% / 2px 2px no-repeat,
+    radial-gradient(circle, #fff 0.5px, transparent 1px) 85% 15% / 2px 2px no-repeat,
+    radial-gradient(circle, #fff 0.6px, transparent 1.1px) 15% 85% / 2px 2px no-repeat;
+  opacity: 0.7;
 }
 .login-bg > * {
   position: relative;
