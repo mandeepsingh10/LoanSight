@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Calculator } from "lucide-react";
+import { Calculator, CircleDollarSign, Plus, Circle, Gem, Layers, Coins } from "lucide-react";
 
 // Loan form schema with basic validation
 const loanFormSchema = z.object({
@@ -417,6 +417,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
             <h4 className="font-medium text-white mb-4">
               {loanStrategy === "gold_silver" ? "Precious Metal Details" : "Payment Information"}
             </h4>
+            <Separator className="my-4" />
             <div className="space-y-4">
               {loanStrategy === "emi" && (
                 <>
@@ -576,102 +577,122 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                 </div>
               )}
 
-              {loanStrategy === "gold_silver" && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="pmType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Precious Metal Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select metal type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="gold">Gold</SelectItem>
-                            <SelectItem value="silver">Silver</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="metalWeight"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Metal weight (g)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="text"
-                              placeholder="Enter weight"
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                handleGoldSilverChange('metalWeight', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="purity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Purity (%)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="text"
-                              placeholder="Enter purity"
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                handleGoldSilverChange('purity', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="netWeight"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Net weight (g)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="text"
-                              placeholder="Auto-calculated"
-                              value={goldSilverValues.netWeight.toFixed(3)}
-                              readOnly
-                              className="cursor-not-allowed opacity-75"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="text-center p-4 bg-gray-800 border border-gray-600 rounded-lg">
-                    <p className="text-gray-300">
-                      For gold & silver loans, payments will be added manually after loan creation.
-                    </p>
-                  </div>
-                </>
+                            {loanStrategy === "gold_silver" && (
+               <Card className="bg-gradient-to-br from-black via-zinc-900 to-neutral-900 border-2 border-amber-400/80 shadow-2xl w-full overflow-hidden relative backdrop-blur-xl">
+                 <div className="absolute inset-0 bg-white/10 backdrop-blur-xl pointer-events-none" />
+                 <CardHeader className="bg-gradient-to-r from-amber-900/40 via-amber-800/30 to-yellow-800/40 text-white pb-2 backdrop-blur-sm border-b border-amber-500/30">
+                   <CardTitle className="text-base flex items-center gap-2 font-semibold -mt-1">
+                     <Layers className="h-6 w-6 text-amber-400" />
+                     Gold Details
+                   </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-6 bg-gradient-to-br from-zinc-900/60 via-neutral-900/50 to-black/60 backdrop-blur-xl">
+                    <div className="grid grid-cols-4 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="itemName"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                                                         <FormLabel className="text-sm font-medium text-amber-200/90">
+                               Item
+                             </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                placeholder=""
+                                className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
+                                {...field}
+                              />
+                            </FormControl>
+                             <FormMessage />
+                           </FormItem>
+                         )}
+                       />
+                       <FormField
+                         control={form.control}
+                         name="metalWeight"
+                         render={({ field }) => (
+                           <FormItem className="space-y-2">
+                                                         <FormLabel className="text-sm font-medium text-amber-200/90">
+                              Weight (g)
+                            </FormLabel>
+                             <FormControl>
+                               <Input
+                                 type="text"
+                                 placeholder=""
+                                 className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
+                                 {...field}
+                                 onChange={(e) => {
+                                   field.onChange(e);
+                                   handleGoldSilverChange('metalWeight', e.target.value);
+                                 }}
+                               />
+                             </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="purity"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                                                           <FormLabel className="text-sm font-medium text-amber-200/90">
+                               Purity (%)
+                             </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="text"
+                                  placeholder=""
+                                  className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
+                                  {...field}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    handleGoldSilverChange('purity', e.target.value);
+                                  }}
+                                />
+                              </FormControl>
+                               <FormMessage />
+                             </FormItem>
+                           )}
+                         />
+                         <FormField
+                           control={form.control}
+                           name="netWeight"
+                           render={({ field }) => (
+                             <FormItem className="space-y-2">
+                                                             <FormLabel className="text-sm font-medium text-amber-200/90">
+                                Net weight
+                              </FormLabel>
+                               <FormControl>
+                                 <Input
+                                   type="text"
+                                   placeholder=""
+                                   className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 cursor-not-allowed opacity-75 backdrop-blur-sm shadow-inner"
+                                   value={goldSilverValues.netWeight.toFixed(3)}
+                                   readOnly
+                                 />
+                               </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                                               <div className="mt-6 flex justify-center">
+                         <Button
+                           type="button"
+                           className="bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white px-3 py-1 rounded-lg text-xs font-medium shadow-lg border border-amber-400/50 backdrop-blur-sm"
+                           onClick={() => {
+                             // TODO: Add logic to save item details to DB
+                             console.log("Add Items button clicked");
+                           }}
+                         >
+                           <Plus className="h-2.5 w-2.5 mr-0.5" />
+                           Add Item
+                         </Button>
+                       </div>
+                      </CardContent>
+                </Card>
               )}
             </div>
           </div>
