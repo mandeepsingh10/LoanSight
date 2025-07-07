@@ -28,14 +28,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
 
   return (
     <div 
-      className={`bg-gray-900 text-white transition-all duration-300 flex flex-col min-h-screen h-full z-20 ${
+      className={`text-white transition-all duration-300 flex flex-col min-h-screen h-full z-20 ${
         sidebarOpen ? 'w-64' : 'w-20'
       } ${
         isMobile ? 'fixed' : 'relative'
       } ${
         isMobile && !sidebarOpen ? '-translate-x-full' : ''
       }`}
-      style={{ backgroundColor: '#111827', minHeight: '100vh' }}
+      style={{ backgroundColor: '#070d18', minHeight: '100vh' }}
     >
       <div className="p-4 flex items-center justify-between">
         <div className={`flex items-center ${sidebarOpen ? 'block' : 'hidden'}`}>
