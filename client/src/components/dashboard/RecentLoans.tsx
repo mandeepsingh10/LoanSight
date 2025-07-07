@@ -98,7 +98,7 @@ const RecentLoans = () => {
   return (
     <>
       <Card className="bg-black border-gray-700">
-        <CardHeader className="flex flex-row items-center justify-between px-6 pt-6 pb-0">
+        <CardHeader className="flex flex-row items-center justify-between px-6 pt-3 pb-0 mb-3">
           <CardTitle className="text-white">Recent Loans</CardTitle>
           <div className="flex items-center gap-2">
             <button
@@ -108,11 +108,6 @@ const RecentLoans = () => {
             >
               {isAmountVisible ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
-            <Link href="/borrowers">
-              <Button variant="link" className="text-blue-400 font-medium hover:text-blue-300">
-                View All
-              </Button>
-            </Link>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -324,15 +319,6 @@ const RecentLoans = () => {
                                   }
                                 })()}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <Button 
-                                  variant="link" 
-                                  className="text-blue-400 hover:text-blue-300 text-sm font-medium h-auto p-0"
-                                  onClick={() => handleViewDetails(loan.borrowerId)}
-                                >
-                                  View Details
-                                </Button>
-                              </td>
                             </tr>
                           )}
                           
@@ -377,15 +363,6 @@ const RecentLoans = () => {
                                     return 'N/A';
                                   }
                                 })()}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <Button 
-                                  variant="link" 
-                                  className="text-blue-400 hover:text-blue-300 text-sm font-medium h-auto p-0"
-                                  onClick={() => handleViewDetails(loan.borrowerId)}
-                                >
-                                  View Details
-                                </Button>
                               </td>
                             </tr>
                           )}
