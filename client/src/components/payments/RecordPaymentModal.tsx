@@ -321,7 +321,6 @@ const RecordPaymentModal = ({ isOpen, onClose }: RecordPaymentModalProps) => {
                       <SelectItem value="cash">Cash</SelectItem>
                       <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                       <SelectItem value="upi">UPI</SelectItem>
-                      <SelectItem value="cheque">Cheque</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

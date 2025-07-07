@@ -603,7 +603,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                                 >
                                   <Check className="h-4 w-4" />
                                 </Button>
-                                {(payment.dueAmount > 0 || getActualPaymentStatus(payment) === "missed") && (
+                                {(payment.dueAmount > 0) && getActualPaymentStatus(payment) !== "missed" && (
                                   <Button
                                     size="sm"
                                     variant="ghost"
@@ -835,7 +835,6 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                   <option value="cash">Cash</option>
                   <option value="bank_transfer">Bank Transfer</option>
                   <option value="upi">UPI</option>
-                  <option value="check">Check</option>
                   <option value="other">Other</option>
                 </select>
               </div>

@@ -1751,7 +1751,6 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                   <option value="cash">Cash</option>
                   <option value="bank_transfer">Bank Transfer</option>
                   <option value="upi">UPI</option>
-                  <option value="check">Check</option>
                   <option value="other">Other</option>
                 </select>
               </div>
