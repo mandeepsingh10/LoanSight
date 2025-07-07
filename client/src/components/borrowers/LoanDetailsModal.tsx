@@ -583,8 +583,18 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                         </TableCell>
                         <TableCell>
                           {payment.dueAmount > 0 ? (
-                            <div className="text-orange-600 font-medium">
-                              {formatCurrency(payment.dueAmount)}
+                            <div className="flex flex-col items-start gap-2">
+                              <div className="text-orange-600 font-medium">
+                                {formatCurrency(payment.dueAmount)}
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleSettleDue(payment)}
+                                className="h-8 px-2"
+                              >
+                                Settle
+                              </Button>
                             </div>
                           ) : (
                             <span className="text-gray-400">-</span>
@@ -603,16 +613,6 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                                 >
                                   <Check className="h-4 w-4" />
                                 </Button>
-                                {(payment.dueAmount > 0) && getActualPaymentStatus(payment) !== "missed" && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleSettleDue(payment)}
-                                    className="h-8 px-2"
-                                  >
-                                    Settle
-                                  </Button>
-                                )}
                               </>
                             ) : (
                               <Button
