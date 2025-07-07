@@ -53,7 +53,6 @@ import { LoanHistory } from "./LoanHistory";
 import { AddLoanModal } from "./AddLoanModal";
 import { LoanDetailsModal } from "./LoanDetailsModal";
 import { Loan } from "@/types";
-import { AddGoldSilverLoanModal } from "./AddGoldSilverLoanModal";
 
 interface BorrowerDetailsProps {
   borrowerId: number;
@@ -122,7 +121,6 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
   const [showLoanDetailsModal, setShowLoanDetailsModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [selectedLoanNumber, setSelectedLoanNumber] = useState<number | undefined>(undefined);
-  const [showAddGoldSilverLoanModal, setShowAddGoldSilverLoanModal] = useState(false);
 
   // Fetch borrower details
   const { data: borrower, isLoading: borrowerLoading } = useQuery({
@@ -1076,25 +1074,13 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                 <Card>
                   <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-lg">Borrower Summary</CardTitle>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="sm"
-                          className="h-8 text-xs bg-blue-800 hover:bg-blue-700 text-white flex items-center"
-                        >
-                          + Add Loan
-                          <ChevronDown className="ml-1 h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={handleAddLoan}>
-                          Cash
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setShowAddGoldSilverLoanModal(true)}>
-                          Gold & Silver
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button
+                      size="sm"
+                      onClick={handleAddLoan}
+                      className="h-8 text-xs bg-blue-800 hover:bg-blue-700 text-white"
+                    >
+                      + Add Loan
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     {loans && loans.length > 0 ? (
@@ -1563,25 +1549,15 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                   <Card>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                       <CardTitle className="text-lg">Borrower Summary</CardTitle>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="sm"
-                            className="h-8 text-xs bg-blue-800 hover:bg-blue-700 text-white flex items-center"
-                          >
-                            + Add Loan
-                            <ChevronDown className="ml-1 h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={handleAddLoan}>
-                            Cash
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setShowAddGoldSilverLoanModal(true)}>
-                            Gold & Silver
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {loans && loans.length > 0 && (
+                        <Button
+                          size="sm"
+                          onClick={handleAddLoan}
+                          className="h-8 text-xs bg-blue-800 hover:bg-blue-700 text-white"
+                        >
+                          + Add Loan
+                        </Button>
+                      )}
                     </CardHeader>
                     <CardContent>
                       {loans && loans.length > 0 ? (
@@ -2024,13 +2000,6 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
         borrowerId={borrowerId}
         isOpen={showAddLoanModal}
         onClose={() => setShowAddLoanModal(false)}
-      />
-
-      {/* Add Gold & Silver Loan Modal */}
-      <AddGoldSilverLoanModal
-        borrowerId={borrowerId}
-        isOpen={showAddGoldSilverLoanModal}
-        onClose={() => setShowAddGoldSilverLoanModal(false)}
       />
 
       {/* Loan Details Modal */}
