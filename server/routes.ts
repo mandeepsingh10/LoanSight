@@ -721,13 +721,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const borrowerId = parseInt(req.params.id);
       const loans = await storage.getLoansByBorrowerId(borrowerId);
       
-      // Add next payment information to each loan
+      // Add next payment information and items to each loan
       const loansWithNextPayment = await Promise.all(
         loans.map(async (loan) => {
           const nextPayment = await storage.getNextPaymentForLoan(loan.id);
+          
+          // If it's a gold/silver loan, fetch its items
+          let items = [];
+          if (loan.loanStrategy === 'gold_silver') {
+            items = await storage.getLoanItemsByLoanId(loan.id);
+          }
+          
           return {
             ...loan,
-            nextPayment: nextPayment ? format(new Date(nextPayment.dueDate), "MMM d, yyyy") : "No payments"
+            nextPayment: nextPayment ? format(new Date(nextPayment.dueDate), "MMM d, yyyy") : "No payments",
+            items
           };
         })
       );
@@ -812,13 +820,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Loan routes
-  app.get('/api/loans', async (req, res) => {
+  app.get('/api/loans', requireAuth, async (req, res) => {
     try {
-      const borrowerId = req.query.borrowerId ? parseInt(req.query.borrowerId as string) : undefined;
-      const loans = borrowerId 
-        ? await storage.getLoansByBorrowerId(borrowerId) 
-        : await storage.getLoans();
-      res.json(loans);
+      const loans = await storage.getAllLoans();
+      
+      // Add next payment information and items to each loan
+      const loansWithNextPayment = await Promise.all(
+        loans.map(async (loan) => {
+          const nextPayment = await storage.getNextPaymentForLoan(loan.id);
+          
+          // If it's a gold/silver loan, fetch its items
+          let items = [];
+          if (loan.loanStrategy === 'gold_silver') {
+            items = await storage.getLoanItemsByLoanId(loan.id);
+          }
+          
+          return {
+            ...loan,
+            nextPayment: nextPayment ? format(new Date(nextPayment.dueDate), "MMM d, yyyy") : "No payments",
+            items
+          };
+        })
+      );
+      
+      res.json(loansWithNextPayment);
     } catch (error) {
       handleError(error, res);
     }
@@ -843,7 +868,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!loan) {
         return res.status(404).json({ message: 'Loan not found' });
       }
-      res.json(loan);
+      
+      // If it's a gold/silver loan, fetch its items
+      let items = [];
+      if (loan.loanStrategy === 'gold_silver') {
+        items = await storage.getLoanItemsByLoanId(loan.id);
+      }
+      
+      res.json({ ...loan, items });
     } catch (error) {
       handleError(error, res);
     }

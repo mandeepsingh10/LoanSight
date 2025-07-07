@@ -720,7 +720,9 @@ export class DatabaseStorage implements IStorage {
 
   // Loan item operations
   async getLoanItemsByLoanId(loanId: number): Promise<LoanItem[]> {
-    return await db.select().from(loanItems).where(loanItems.loanId.eq(loanId));
+    const result = await db.select().from(loanItems).where(eq(loanItems.loanId, loanId));
+    console.log('getLoanItemsByLoanId for loanId', loanId, 'result:', result);
+    return result;
   }
 
   async createLoanItem(item: Omit<LoanItem, "id">): Promise<LoanItem> {
@@ -729,7 +731,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteLoanItemsByLoanId(loanId: number): Promise<void> {
-    await db.delete(loanItems).where(loanItems.loanId.eq(loanId));
+    await db.delete(loanItems).where(eq(loanItems.loanId, loanId));
   }
 
   async updateLoanItemsForLoan(loanId: number, items: Omit<LoanItem, "id" | "loanId">[]): Promise<LoanItem[]> {

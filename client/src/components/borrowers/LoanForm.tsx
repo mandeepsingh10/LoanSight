@@ -414,7 +414,9 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
           )}
 
           <div>
-            <h4 className="font-medium text-white mb-4">Payment Information</h4>
+            <h4 className="font-medium text-white mb-4">
+              {loanStrategy === "gold_silver" ? "Precious Metal Details" : "Payment Information"}
+            </h4>
             <div className="space-y-4">
               {loanStrategy === "emi" && (
                 <>
@@ -675,39 +677,13 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
           </div>
         </div>
 
-        {loanStrategy === "gold_silver" && (
-          <div className="mt-6">
-            <FormField
-              control={form.control}
-              name="goldSilverNotes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-lg font-bold text-white">Gold & Silver Notes</FormLabel>
-                  <FormControl>
-                    <textarea
-                      rows={4}
-                      placeholder="Additional notes about the gold/silver collateral, terms, conditions, or any special agreements..."
-                      {...field}
-                      className="w-full px-3 py-2 text-white bg-black border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none placeholder:text-gray-400"
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Any additional information about the gold/silver collateral, market rates, or special terms
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        )}
-
         <div className="mt-6">
           <FormField
             control={form.control}
             name="notes"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-lg font-bold text-white">Loan Notes</FormLabel>
+                <FormLabel className="text-lg font-bold text-white">Notes</FormLabel>
                 <FormControl>
                   <textarea
                     rows={4}
@@ -716,9 +692,6 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                     className="w-full px-3 py-2 text-white bg-black border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none placeholder:text-gray-400"
                   />
                 </FormControl>
-                <FormDescription>
-                  Optional notes about the loan terms, conditions, or any special agreements
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
