@@ -25,6 +25,7 @@ import { LoanDetailsModal } from "./LoanDetailsModal";
 interface BorrowerTableProps {
   borrowers: Borrower[];
   searchQuery?: string;
+  activeTab: "cash" | "gold-silver";
 }
 
 interface BorrowerWithLoans extends Borrower {
@@ -49,7 +50,7 @@ interface BorrowerWithLoans extends Borrower {
   }>;
 }
 
-const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
+const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTableProps) => {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [confirmDeleteLoan, setConfirmDeleteLoan] = useState<{ borrowerId: number; loanId: number } | null>(null);
   const [selectedBorrower, setSelectedBorrower] = useState<number | null>(null);
@@ -263,6 +264,34 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
     }).format(amount);
   };
 
+  // Helper to filter loans by type
+  function filterLoansByType(loans, type) {
+    if (!Array.isArray(loans)) return [];
+    if (type === 'cash') {
+      return loans.filter(
+        (loan) =>
+          !loan.loanStrategy ||
+          loan.loanStrategy === 'emi' ||
+          loan.loanStrategy === 'flat' ||
+          loan.loanStrategy === 'custom'
+      );
+    } else if (type === 'gold-silver') {
+      return loans.filter((loan) => loan.loanStrategy === 'gold_silver');
+    }
+    return [];
+  }
+
+  // Filter borrowersWithLoans by loans matching the active tab
+  const filteredBorrowersWithLoans = borrowersWithLoans
+    .map((borrower) => {
+      const filteredLoans = filterLoansByType(borrower.loans, activeTab);
+      if (filteredLoans.length > 0) {
+        return { ...borrower, loans: filteredLoans };
+      }
+      return null;
+    })
+    .filter(Boolean);
+
   // Debug logging
   console.log("BorrowerTable received borrowers:", borrowers.length);
   console.log("BorrowerTable searchQuery:", searchQuery);
@@ -308,7 +337,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {borrowersWithLoans.length === 0 ? (
+              {filteredBorrowersWithLoans.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-6 py-4 text-center text-gray-300">
                     {searchQuery.trim() 
@@ -318,7 +347,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
                   </td>
                 </tr>
               ) : (
-                borrowersWithLoans.map((borrower, index) => {
+                filteredBorrowersWithLoans.map((borrower, index) => {
                   const loans = borrower.loans || [];
                   const hasMultipleLoans = loans.length > 1;
                   const isExpanded = expandedBorrowers.has(borrower.id);
@@ -752,8 +781,8 @@ const BorrowerTable = ({ borrowers, searchQuery = "" }: BorrowerTableProps) => {
         <div className="bg-gray-900 px-6 py-3 flex items-center justify-between border-t border-gray-700">
           <div className="text-sm text-white/70">
             Showing <span className="font-medium text-white">1</span> to{" "}
-            <span className="font-medium text-white">{borrowersWithLoans.length}</span> of{" "}
-            <span className="font-medium text-white">{borrowersWithLoans.length}</span> results
+            <span className="font-medium text-white">{filteredBorrowersWithLoans.length}</span> of{" "}
+            <span className="font-medium text-white">{filteredBorrowersWithLoans.length}</span> results
           </div>
           {/* Pagination would go here in a real app with more data */}
         </div>

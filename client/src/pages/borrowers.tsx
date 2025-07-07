@@ -104,26 +104,8 @@ const Borrowers = () => {
     return searchableText.includes(searchTerm);
   });
 
-  // Separate cash and gold/silver borrowers based on loan strategy
-  const cashBorrowers = borrowers?.filter(borrower => 
-    !borrower.loan?.loanStrategy || 
-    borrower.loan?.loanStrategy === 'emi' || 
-    borrower.loan?.loanStrategy === 'flat' || 
-    borrower.loan?.loanStrategy === 'custom'
-  );
-  
-  const goldSilverBorrowers = borrowers?.filter(borrower => 
-    borrower.loan?.loanStrategy === 'gold_silver'
-  );
-
-  // Sort borrowers by ID in ascending order
-  const sortedCashBorrowers = cashBorrowers?.sort((a, b) => {
-    const aId = a.idNumber || a.id;
-    const bId = b.idNumber || b.id;
-    return aId - bId;
-  });
-
-  const sortedGoldSilverBorrowers = goldSilverBorrowers?.sort((a, b) => {
+  // Remove per-loan-type filtering from here. Just sort and search as before.
+  const sortedBorrowers = borrowers?.sort((a, b) => {
     const aId = a.idNumber || a.id;
     const bId = b.idNumber || b.id;
     return aId - bId;
@@ -168,7 +150,7 @@ const Borrowers = () => {
             <span>Cash</span>
             {searchQuery.trim() && (
               <span className="ml-1 text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
-                {sortedCashBorrowers?.length || 0}
+                {sortedBorrowers?.length || 0}
               </span>
             )}
           </TabsTrigger>
@@ -180,7 +162,7 @@ const Borrowers = () => {
             <span>Gold & Silver</span>
             {searchQuery.trim() && (
               <span className="ml-1 text-xs bg-yellow-600 text-white px-2 py-1 rounded-full">
-                {sortedGoldSilverBorrowers?.length || 0}
+                {sortedBorrowers?.length || 0}
               </span>
             )}
           </TabsTrigger>
@@ -196,15 +178,15 @@ const Borrowers = () => {
                 ))}
               </div>
             </div>
-          ) : sortedCashBorrowers && sortedCashBorrowers.length > 0 ? (
+          ) : sortedBorrowers && sortedBorrowers.length > 0 ? (
             <>
               {/* Debug info */}
               {searchQuery.trim() && (
                 <div className="mb-4 p-3 bg-blue-900 text-blue-200 rounded text-sm">
-                  Found {sortedCashBorrowers.length} cash borrowers matching "{searchQuery}"
+                  Found {sortedBorrowers.length} borrowers matching "{searchQuery}"
                 </div>
               )}
-            <BorrowerTable borrowers={sortedCashBorrowers} searchQuery={searchQuery} />
+            <BorrowerTable borrowers={sortedBorrowers} searchQuery={searchQuery} activeTab="cash" />
             </>
           ) : (
             <div className="bg-black rounded-lg border border-gray-800 p-12 text-center">
@@ -241,15 +223,15 @@ const Borrowers = () => {
                 ))}
               </div>
             </div>
-          ) : sortedGoldSilverBorrowers && sortedGoldSilverBorrowers.length > 0 ? (
+          ) : sortedBorrowers && sortedBorrowers.length > 0 ? (
             <>
               {/* Debug info */}
               {searchQuery.trim() && (
                 <div className="mb-4 p-3 bg-yellow-900 text-yellow-200 rounded text-sm">
-                  Found {sortedGoldSilverBorrowers.length} gold/silver borrowers matching "{searchQuery}"
+                  Found {sortedBorrowers.length} borrowers matching "{searchQuery}"
                 </div>
               )}
-            <BorrowerTable borrowers={sortedGoldSilverBorrowers} searchQuery={searchQuery} />
+            <BorrowerTable borrowers={sortedBorrowers} searchQuery={searchQuery} activeTab="gold-silver" />
             </>
           ) : (
             <div className="bg-black rounded-lg border border-gray-800 p-12 text-center">
