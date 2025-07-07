@@ -853,6 +853,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // First validate the loan data
       const rawData = validateBody(insertLoanSchema, req);
+      const items = req.body.items; // Expecting array of items for gold/silver loans
+      console.log('DEBUG: items from req.body:', items, 'type:', typeof items, 'isArray:', Array.isArray(items));
       
       // Ensure borrower exists
       const borrower = await storage.getBorrowerById(rawData.borrowerId);
@@ -887,10 +889,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loan = await storage.createLoan(data);
       console.log('Loan created:', loan);
       
+      // If gold/silver loan and items array is present, store items
+      let createdItems = [];
+      if (data.loanStrategy === 'gold_silver' && Array.isArray(items)) {
+        for (const item of items) {
+          const created = await storage.createLoanItem({
+            loanId: loan.id,
+            itemName: item.itemName,
+            pmType: item.pmType,
+            metalWeight: item.metalWeight,
+            purity: item.purity,
+            netWeight: item.netWeight,
+            goldSilverNotes: item.goldSilverNotes || null,
+          });
+          createdItems.push(created);
+        }
+      }
       // Generate the payment schedule
       await generatePaymentSchedule(loan.id);
       
-      res.status(201).json(loan);
+      // Return the loan with items if any
+      res.status(201).json({ ...loan, items: createdItems });
     } catch (error) {
       handleError(error, res);
     }

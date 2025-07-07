@@ -2,7 +2,7 @@ import { borrowers, type Borrower, type InsertBorrower,
          loans, type Loan, type InsertLoan,
          payments, type Payment, type InsertPayment, type UpdatePayment,
          users, type User, type CreateUser, type UpdateUser,
-         PaymentStatus, UserRole } from "@shared/schema";
+         PaymentStatus, UserRole, loanItems, type LoanItem } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, lt, gte, desc, isNull, sql } from "drizzle-orm";
 import { subMonths } from "date-fns";
@@ -57,6 +57,12 @@ export interface IStorage {
   setPasswordResetToken(username: string, token: string, expiresAt: Date): Promise<boolean>;
   resetPassword(token: string, newPasswordHash: string): Promise<boolean>;
   changePassword(userId: number, newPasswordHash: string): Promise<boolean>;
+
+  // Loan item operations
+  getLoanItemsByLoanId(loanId: number): Promise<LoanItem[]>;
+  createLoanItem(item: Omit<LoanItem, "id">): Promise<LoanItem>;
+  deleteLoanItemsByLoanId(loanId: number): Promise<void>;
+  updateLoanItemsForLoan(loanId: number, items: Omit<LoanItem, "id" | "loanId">[]): Promise<LoanItem[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -710,6 +716,32 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return result.length > 0;
+  }
+
+  // Loan item operations
+  async getLoanItemsByLoanId(loanId: number): Promise<LoanItem[]> {
+    return await db.select().from(loanItems).where(loanItems.loanId.eq(loanId));
+  }
+
+  async createLoanItem(item: Omit<LoanItem, "id">): Promise<LoanItem> {
+    const [created] = await db.insert(loanItems).values(item).returning();
+    return created;
+  }
+
+  async deleteLoanItemsByLoanId(loanId: number): Promise<void> {
+    await db.delete(loanItems).where(loanItems.loanId.eq(loanId));
+  }
+
+  async updateLoanItemsForLoan(loanId: number, items: Omit<LoanItem, "id" | "loanId">[]): Promise<LoanItem[]> {
+    // Delete existing items
+    await this.deleteLoanItemsByLoanId(loanId);
+    // Insert new items
+    const createdItems: LoanItem[] = [];
+    for (const item of items) {
+      const created = await this.createLoanItem({ ...item, loanId });
+      createdItems.push(created);
+    }
+    return createdItems;
   }
 }
 

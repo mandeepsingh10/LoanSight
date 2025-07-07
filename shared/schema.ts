@@ -200,6 +200,20 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
   }),
 }));
 
+// Loan items table for multiple gold/silver items per loan
+export const loanItems = pgTable("loan_items", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull().references(() => loans.id, { onDelete: "cascade" }),
+  itemName: text("item_name").notNull(),
+  pmType: text("pm_type").notNull(),
+  metalWeight: real("metal_weight").notNull(),
+  purity: real("purity").notNull(),
+  netWeight: real("net_weight").notNull(),
+  goldSilverNotes: text("gold_silver_notes"),
+});
+
+export type LoanItem = typeof loanItems.$inferSelect;
+
 // Export types
 export type Borrower = typeof borrowers.$inferSelect;
 export type InsertBorrower = z.infer<typeof insertBorrowerSchema>;
