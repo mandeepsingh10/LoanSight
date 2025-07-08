@@ -996,6 +996,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Loan notes update endpoint
+  app.patch('/api/loans/:id/notes', requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { notes } = req.body;
+      if (typeof notes !== 'string') {
+        return res.status(400).json({ message: 'Notes must be a string' });
+      }
+      const loan = await storage.updateLoan(id, { notes });
+      if (!loan) {
+        return res.status(404).json({ message: 'Loan not found' });
+      }
+      res.json(loan);
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   // Payment routes
   app.get('/api/payments', async (req, res) => {
     try {
