@@ -71,12 +71,6 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const [upiId, setUpiId] = useState("");
   const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  // Settlement dialog state
-  const [settlementDialog, setSettlementDialog] = useState(false);
-  const [settlementPayment, setSettlementPayment] = useState<Payment | null>(null);
-  const [settlementDate, setSettlementDate] = useState("");
-  const [settlementNotes, setSettlementNotes] = useState("");
-
   // Delete dialog state
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deletePayment, setDeletePayment] = useState<Payment | null>(null);
@@ -216,51 +210,6 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       toast({
         title: "Error",
         description: `Failed to mark payment as collected: ${error}`,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Settlement mutation
-  const settlementMutation = useMutation({
-    mutationFn: async () => {
-      if (!settlementPayment || !loan) return;
-      
-      // Calculate the total amount to be paid (original paid amount + due amount)
-      const totalPaidAmount = (settlementPayment.paidAmount || 0) + (settlementPayment.dueAmount || 0);
-      
-      const updateData = {
-        status: 'collected',
-        paidDate: settlementDate,
-        paidAmount: totalPaidAmount,
-        dueAmount: 0, // Clear the due amount
-        paymentMethod: settlementPayment.paymentMethod || 'cash',
-        notes:
-          `₹${totalPaidAmount} was settled on ${format(new Date(settlementDate), 'MMM d, yyyy')}.` +
-          (settlementNotes ? ` ${settlementNotes}` : '') +
-          (settlementPayment.notes ? ` | Original: ${settlementPayment.notes}` : ''),
-      };
-      
-      const response = await apiRequest('POST', `/api/payments/${settlementPayment.id}/collect`, updateData);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Due Settled Successfully!",
-        description: "Payment has been marked as fully settled.",
-      });
-      
-      setSettlementDialog(false);
-      setSettlementPayment(null);
-      setSettlementDate("");
-      setSettlementNotes("");
-      
-      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Settlement Failed",
-        description: "Could not settle the due. Please try again.",
         variant: "destructive",
       });
     },
@@ -471,18 +420,6 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
     });
   };
 
-  const handleSettleDue = (payment: Payment) => {
-    setSettlementPayment(payment);
-    setSettlementDate(format(new Date(), "yyyy-MM-dd"));
-    setSettlementNotes("");
-    setSettlementDialog(true);
-  };
-
-  const handleSubmitSettlement = () => {
-    if (!settlementPayment || !settlementDate) return;
-    settlementMutation.mutate();
-  };
-
   const handleEditPayment = (payment: Payment) => {
     setSelectedPayment(payment);
     setPaymentAmount(payment.paidAmount?.toString() || "");
@@ -669,18 +606,8 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                         </TableCell>
                         <TableCell>
                           {payment.dueAmount > 0 ? (
-                            <div className="flex flex-col items-start gap-2">
-                              <div className="text-orange-600 font-medium">
-                                {formatCurrency(payment.dueAmount)}
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleSettleDue(payment)}
-                                className="h-8 px-2"
-                              >
-                                Settle
-                              </Button>
+                            <div className="text-orange-600 font-medium">
+                              {formatCurrency(payment.dueAmount)}
                             </div>
                           ) : (
                             <span className="text-gray-400">-</span>
@@ -1027,65 +954,6 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
               className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
             >
               {collectPaymentMutation.isPending ? "Processing..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Settlement Dialog */}
-      <Dialog open={settlementDialog} onOpenChange={setSettlementDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Settle Due Payment</DialogTitle>
-            <DialogDescription>
-              {settlementPayment && (
-                <>
-                  Complete the settlement for {formatCurrency(settlementPayment.amount)} due on{" "}
-                  {format(new Date(settlementPayment.dueDate), "MMM d, yyyy")}
-                  <br />
-                  <span className="text-red-600 font-medium mt-1 block">
-                    Outstanding: {formatCurrency(settlementPayment.dueAmount || 0)}
-                  </span>
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="settlement-date">Settlement Date</Label>
-              <Input
-                id="settlement-date"
-                type="date"
-                value={settlementDate}
-                onChange={(e) => setSettlementDate(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="settlement-notes">Notes</Label>
-              <Textarea
-                id="settlement-notes"
-                placeholder="Add notes about the settlement (optional)"
-                value={settlementNotes}
-                onChange={(e) => setSettlementNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button
-              type="button"
-              onClick={handleSubmitSettlement}
-              disabled={settlementMutation.isPending}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              {settlementMutation.isPending ? "Settling..." : "Settle Due"}
             </Button>
           </DialogFooter>
         </DialogContent>
