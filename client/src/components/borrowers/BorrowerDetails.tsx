@@ -1178,7 +1178,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                         placeholder="Add notes about this borrower..."
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        className="bg-black border-white/20 text-white min-h-[120px]"
+                        className="bg-black border-gray-600 text-white min-h-[120px]"
                         rows={5}
                       />
                       <div className="flex gap-2">
@@ -1655,7 +1655,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                           placeholder="Add notes about this borrower..."
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
-                          className="bg-gray-800 border-gray-600 text-white min-h-[120px]"
+                          className="bg-black border-gray-600 text-white min-h-[120px]"
                           rows={5}
                         />
                         <div className="flex gap-2">
