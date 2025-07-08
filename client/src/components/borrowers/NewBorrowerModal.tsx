@@ -39,7 +39,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Camera, Upload, Eye, MoreVertical } from "lucide-react";
+import { Camera, Upload, Eye, MoreVertical, User, IdCard, Shield, StickyNote } from "lucide-react";
 
 // Import the LoanForm component
 import LoanForm from "./LoanForm";
@@ -369,7 +369,9 @@ const NewBorrowerModal = ({ isOpen, onClose }: NewBorrowerModalProps) => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h4 className="font-medium text-white mb-4">Personal Information</h4>
+                  <h4 className="font-medium text-white mb-4 flex items-center gap-2">
+                    <User className="h-5 w-5 text-blue-400" /> Personal Information
+                  </h4>
                   <div className="space-y-4">
                     <FormField
                       control={borrowerForm.control}
@@ -422,7 +424,9 @@ const NewBorrowerModal = ({ isOpen, onClose }: NewBorrowerModalProps) => {
                 </div>
 
                 <div>
-                  <h4 className="font-medium text-white mb-4">Identification (Optional)</h4>
+                  <h4 className="font-medium text-white mb-4 flex items-center gap-2">
+                    <IdCard className="h-5 w-5 text-green-400" /> Identification (Optional)
+                  </h4>
                   <div className="space-y-4">
                     <FormField
                       control={borrowerForm.control}
@@ -469,7 +473,9 @@ const NewBorrowerModal = ({ isOpen, onClose }: NewBorrowerModalProps) => {
                 </div>
 
                 <div>
-                  <h4 className="font-medium text-white mb-4">Guarantor Details (Optional)</h4>
+                  <h4 className="font-medium text-white mb-4 flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-amber-400" /> Guarantor Details (Optional)
+                  </h4>
                   <div className="space-y-4">
                     <FormField
                       control={borrowerForm.control}
@@ -524,7 +530,9 @@ const NewBorrowerModal = ({ isOpen, onClose }: NewBorrowerModalProps) => {
 
               {/* Notes Section */}
               <div>
-                <h3 className="text-lg font-medium mb-3 text-white">Notes</h3>
+                <h3 className="text-lg font-medium mb-3 text-white flex items-center gap-2">
+                  <StickyNote className="h-5 w-5 text-yellow-400" /> Notes
+                </h3>
                 <FormField
                   control={borrowerForm.control}
                   name="notes"

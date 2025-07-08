@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Plus } from "lucide-react";
 import LoanForm from "./LoanForm";
 
 interface AddLoanModalProps {
@@ -66,7 +67,11 @@ export const AddLoanModal = ({ borrowerId, isOpen, onClose }: AddLoanModalProps)
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="bg-transparent">
-          <DialogTitle>Add New Loan</DialogTitle>
+          <DialogTitle>
+            <span className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-blue-400" /> Add New Loan
+            </span>
+          </DialogTitle>
         </DialogHeader>
         <div className="border-t border-gray-700 my-4"></div>
         

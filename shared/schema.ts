@@ -58,14 +58,6 @@ export const loans = pgTable("loans", {
   // Fields for FLAT strategy
   flatMonthlyAmount: real("flat_monthly_amount"),
   
-  // Fields for GOLD_SILVER strategy
-  pmType: text("pm_type"), // "gold" or "silver"
-  metalWeight: real("metal_weight"), // in grams
-  purity: real("purity"), // percentage (e.g., 75 for 75%)
-  netWeight: real("net_weight"), // calculated field
-  amountPaid: real("amount_paid"),
-  goldSilverNotes: text("gold_silver_notes"),
-  
   // General loan notes
   notes: text("notes"),
   
@@ -199,6 +191,20 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
     references: [loans.id],
   }),
 }));
+
+// Loan items table for multiple gold/silver items per loan
+export const loanItems = pgTable("loan_items", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull().references(() => loans.id, { onDelete: "cascade" }),
+  itemName: text("item_name").notNull(),
+  pmType: text("pm_type").notNull(),
+  metalWeight: real("metal_weight").notNull(),
+  purity: real("purity").notNull(),
+  netWeight: real("net_weight").notNull(),
+  goldSilverNotes: text("gold_silver_notes"),
+});
+
+export type LoanItem = typeof loanItems.$inferSelect;
 
 // Export types
 export type Borrower = typeof borrowers.$inferSelect;

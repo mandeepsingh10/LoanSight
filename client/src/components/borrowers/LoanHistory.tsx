@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { 
   Plus, 
-  Eye, 
+  Pencil, 
   Trash2,
   DollarSign, 
   Calendar, 
@@ -173,7 +173,14 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
     setDeleteConfirmText("");
   };
 
-  const filteredLoans = getFilteredLoans();
+  // Sort so most recent loan is at the top
+  const filteredLoans = getFilteredLoans().slice().sort((a, b) => {
+    // Prefer createdAt if available, else use id
+    if (a.createdAt && b.createdAt) {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    return b.id - a.id;
+  });
   console.log("All loans:", loans);
   console.log("Filtered loans:", filteredLoans);
   console.log("Active tab:", activeTab);
@@ -211,94 +218,76 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle>Loan History</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="active">Active ({loans.filter((l: Loan) => l.status === "active").length})</TabsTrigger>
-            <TabsTrigger value="completed">Completed ({loans.filter((l: Loan) => l.status === "completed").length})</TabsTrigger>
-            <TabsTrigger value="all">All ({loans.length})</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value={activeTab} className="mt-4">
+    <div className="bg-black rounded-lg shadow overflow-hidden border border-gray-700">
+      <div className="px-6 pt-6 pb-2 flex items-center justify-between">
+        <div className="text-lg font-bold text-white">Loan History</div>
+        <div>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+            <TabsList className="bg-gray-900 rounded-lg">
+              <TabsTrigger value="active">Active ({loans.filter((l: Loan) => l.status === "active").length})</TabsTrigger>
+              <TabsTrigger value="completed">Completed ({loans.filter((l: Loan) => l.status === "completed").length})</TabsTrigger>
+              <TabsTrigger value="all">All ({loans.length})</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-900 text-left">
+            <tr>
+              <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider w-12 text-center">No.</th>
+              <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-left">Amount</th>
+              <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-left">Type</th>
+              <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Tenure</th>
+              <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Next Payment</th>
+              <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-700">
             {filteredLoans.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500">
+              <tr>
+                <td colSpan={6} className="px-6 py-4 text-center text-gray-300">
                   {activeTab === "active" && "No active loans"}
                   {activeTab === "completed" && "No completed loans"}
                   {activeTab === "all" && "No loans found"}
-                </p>
-              </div>
+                </td>
+              </tr>
             ) : (
-              <div className="space-y-4">
-                {filteredLoans.map((loan: Loan, index: number) => (
-                  <div
-                    key={loan.id}
-                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        {getStatusIcon(loan.status)}
-                        <div>
-                          <h3 className="font-medium">Loan {index + 1}</h3>
-                          <p className="text-sm text-gray-500">
-                            Started {format(new Date(loan.startDate), "MMM d, yyyy")}
-                          </p>
-                        </div>
-                      </div>
+              filteredLoans.map((loan: Loan, index: number) => (
+                <tr key={loan.id} className="hover:bg-[#111111]">
+                  <td className="px-6 py-4 whitespace-nowrap text-center text-gray-400 font-medium">{index + 1}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-white font-medium text-left">{formatCurrency(loan.amount)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-white text-left">{getLoanStrategyDisplay(loan.loanStrategy)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center text-white">{loan.tenure ? `${loan.tenure} months` : 'NA'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center text-white">
+                    <span className="font-medium whitespace-nowrap">{loan.nextPayment}</span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <div className="flex items-center justify-center space-x-3">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onViewLoan(loan, index + 1)}
+                      >
+                        <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
+                      </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setConfirmDeleteLoan(loan.id)}
+                        >
+                          <Trash2 size={16} className="text-red-500 hover:text-red-400" />
+                        </Button>
+                      )}
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm items-center">
-                      <div className="flex items-center space-x-2">
-                        <DollarSign className="h-4 w-4 text-gray-500" />
-                        <span className="font-medium">{formatCurrency(loan.amount)}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-gray-500" />
-                        <span>{getLoanStrategyDisplay(loan.loanStrategy)}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4 text-gray-500" />
-                        <span>{loan.tenure ? `${loan.tenure} months` : 'NA'}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 justify-between md:justify-end w-full">
-                        <span className="text-gray-500">Next:</span>
-                        <span className="font-medium">{loan.nextPayment}</span>
-                        <span className="flex-1"></span>
-                        {activeTab === "all" && getStatusBadge(loan.status)}
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onViewLoan(loan, index + 1)}
-                            className="flex items-center"
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          {isAdmin && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setConfirmDeleteLoan(loan.id)}
-                              className="flex items-center text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Delete
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  </td>
+                </tr>
+              ))
             )}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
+          </tbody>
+        </table>
+      </div>
 
       {/* Delete Loan Confirmation Dialog */}
       <AlertDialog open={confirmDeleteLoan !== null} onOpenChange={handleDeleteDialogClose}>
@@ -336,6 +325,6 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </div>
   );
 }; 

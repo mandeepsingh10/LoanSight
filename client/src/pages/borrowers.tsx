@@ -118,7 +118,7 @@ const Borrowers = () => {
           <div className="relative">
             <Input
               type="text"
-              placeholder="Search borrowers, phone, address, guarantor name/phone/address, or loan type (EMI, FLAT, CUSTOM, GOLD/SILVER)..."
+              placeholder="Search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="py-6 pl-10 pr-4 w-full rounded-lg"

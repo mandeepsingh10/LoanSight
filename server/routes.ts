@@ -721,13 +721,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const borrowerId = parseInt(req.params.id);
       const loans = await storage.getLoansByBorrowerId(borrowerId);
       
-      // Add next payment information to each loan
+      // Add next payment information and items to each loan
       const loansWithNextPayment = await Promise.all(
         loans.map(async (loan) => {
           const nextPayment = await storage.getNextPaymentForLoan(loan.id);
+          
+          // If it's a gold/silver loan, fetch its items
+          let items = [];
+          if (loan.loanStrategy === 'gold_silver') {
+            items = await storage.getLoanItemsByLoanId(loan.id);
+          }
+          
           return {
             ...loan,
-            nextPayment: nextPayment ? format(new Date(nextPayment.dueDate), "MMM d, yyyy") : "No payments"
+            nextPayment: nextPayment ? format(new Date(nextPayment.dueDate), "MMM d, yyyy") : "No payments",
+            items
           };
         })
       );
@@ -812,13 +820,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Loan routes
-  app.get('/api/loans', async (req, res) => {
+  app.get('/api/loans', requireAuth, async (req, res) => {
     try {
-      const borrowerId = req.query.borrowerId ? parseInt(req.query.borrowerId as string) : undefined;
-      const loans = borrowerId 
-        ? await storage.getLoansByBorrowerId(borrowerId) 
-        : await storage.getLoans();
-      res.json(loans);
+      const loans = await storage.getAllLoans();
+      
+      // Add next payment information and items to each loan
+      const loansWithNextPayment = await Promise.all(
+        loans.map(async (loan) => {
+          const nextPayment = await storage.getNextPaymentForLoan(loan.id);
+          
+          // If it's a gold/silver loan, fetch its items
+          let items = [];
+          if (loan.loanStrategy === 'gold_silver') {
+            items = await storage.getLoanItemsByLoanId(loan.id);
+          }
+          
+          return {
+            ...loan,
+            nextPayment: nextPayment ? format(new Date(nextPayment.dueDate), "MMM d, yyyy") : "No payments",
+            items
+          };
+        })
+      );
+      
+      res.json(loansWithNextPayment);
     } catch (error) {
       handleError(error, res);
     }
@@ -843,7 +868,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!loan) {
         return res.status(404).json({ message: 'Loan not found' });
       }
-      res.json(loan);
+      
+      // If it's a gold/silver loan, fetch its items
+      let items = [];
+      if (loan.loanStrategy === 'gold_silver') {
+        items = await storage.getLoanItemsByLoanId(loan.id);
+      }
+      
+      res.json({ ...loan, items });
     } catch (error) {
       handleError(error, res);
     }
@@ -853,6 +885,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // First validate the loan data
       const rawData = validateBody(insertLoanSchema, req);
+      const items = req.body.items; // Expecting array of items for gold/silver loans
+      console.log('DEBUG: items from req.body:', items, 'type:', typeof items, 'isArray:', Array.isArray(items));
       
       // Ensure borrower exists
       const borrower = await storage.getBorrowerById(rawData.borrowerId);
@@ -860,7 +894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Borrower not found' });
       }
       
-      // Create loan data with required fields to satisfy type requirements
+      // Create loan data with required fields
       const data = {
         borrowerId: rawData.borrowerId,
         amount: rawData.amount,
@@ -873,13 +907,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tenure: rawData.tenure,
         customEmiAmount: rawData.customEmiAmount,
         flatMonthlyAmount: rawData.flatMonthlyAmount,
-        pmType: rawData.pmType,
-        metalWeight: rawData.metalWeight,
-        purity: rawData.purity,
-        netWeight: rawData.netWeight,
-        amountPaid: rawData.amountPaid,
-        goldSilverNotes: rawData.goldSilverNotes,
       };
+      
+      // For gold/silver loans, validate that items array is present
+      if (data.loanStrategy === 'gold_silver') {
+        if (!Array.isArray(items) || items.length === 0) {
+          return res.status(400).json({ message: 'At least one item is required for gold/silver loans' });
+        }
+      }
       
       console.log('Creating loan with data:', data);
       
@@ -887,10 +922,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loan = await storage.createLoan(data);
       console.log('Loan created:', loan);
       
+      // If gold/silver loan and items array is present, store items
+      let createdItems = [];
+      if (data.loanStrategy === 'gold_silver' && Array.isArray(items)) {
+        for (const item of items) {
+          const created = await storage.createLoanItem({
+            loanId: loan.id,
+            itemName: item.itemName,
+            pmType: item.pmType || 'gold', // Default to 'gold' if not specified
+            metalWeight: parseFloat(item.metalWeight),
+            purity: parseFloat(item.purity),
+            netWeight: parseFloat(item.netWeight),
+            goldSilverNotes: item.notes || null,
+          });
+          createdItems.push(created);
+        }
+      }
+      
       // Generate the payment schedule
       await generatePaymentSchedule(loan.id);
       
-      res.status(201).json(loan);
+      // Return the loan with items if any
+      res.status(201).json({ ...loan, items: createdItems });
     } catch (error) {
       handleError(error, res);
     }
@@ -938,6 +991,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Loan not found' });
       }
       res.json({ success: true });
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  // Loan notes update endpoint
+  app.patch('/api/loans/:id/notes', requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { notes } = req.body;
+      if (typeof notes !== 'string') {
+        return res.status(400).json({ message: 'Notes must be a string' });
+      }
+      const loan = await storage.updateLoan(id, { notes });
+      if (!loan) {
+        return res.status(404).json({ message: 'Loan not found' });
+      }
+      res.json(loan);
     } catch (error) {
       handleError(error, res);
     }

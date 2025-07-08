@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -46,7 +46,9 @@ import {
   Check,
   ChevronDown,
   CreditCard,
-  Pencil
+  Pencil,
+  X,
+  Save
 } from "lucide-react";
 import { Loan, Payment } from "@/types";
 
@@ -92,6 +94,10 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
     customAmount: "",
     customDueDate: format(new Date(), 'yyyy-MM-dd')
   });
+
+  // Edit notes state (match borrower notes logic)
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notes, setNotes] = useState("");
 
   // Fetch payments for this specific loan
   const { data: payments = [], isLoading: paymentsLoading } = useQuery({
@@ -288,6 +294,39 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       });
     },
   });
+
+  // Update notes mutation (match borrower notes logic)
+  const updateNotesMutation = useMutation({
+    mutationFn: async (data: { notes: string }) => {
+      const response = await apiRequest("PATCH", `/api/loans/${loan?.id}/notes`, data);
+      if (!response.ok) {
+        throw new Error("Failed to update notes");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Notes updated successfully.",
+      });
+      setEditingNotes(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/loans", loan?.id] });
+      if (loan?.borrowerId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/loans/borrower/" + loan.borrowerId] });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update notes: ${error}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  useEffect(() => {
+    setNotes(loan?.notes || "");
+  }, [loan]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -527,6 +566,45 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
           </DialogHeader>
 
           <div className="mt-6">
+            {loan?.loanStrategy === "gold_silver" && (
+              <div className="mb-6">
+                <Card className="bg-gradient-to-br from-black via-zinc-900 to-neutral-900 border-2 border-amber-400/30 shadow-xl">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-medium text-white flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-amber-400" />
+                      Precious Metal Items
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto rounded-lg border border-amber-400/30 bg-black/40">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-amber-900/40 hover:bg-amber-900/60">
+                            <TableHead className="text-amber-200 w-1/5 text-center">Item</TableHead>
+                            <TableHead className="text-amber-200 w-1/5 text-center">Type</TableHead>
+                            <TableHead className="text-amber-200 w-1/5 text-center">Weight (g)</TableHead>
+                            <TableHead className="text-amber-200 w-1/5 text-center">Purity (%)</TableHead>
+                            <TableHead className="text-amber-200 w-1/5 text-center">Net Weight</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {loan.items?.map((item, idx) => (
+                            <TableRow key={idx} className="border-t border-amber-400/10 hover:bg-amber-900/20">
+                              <TableCell className="text-white text-center capitalize">{item.itemName.toLowerCase()}</TableCell>
+                              <TableCell className="text-white text-center capitalize">{item.pmType === 'gold' ? 'Gold' : 'Silver'}</TableCell>
+                              <TableCell className="text-white text-center">{item.metalWeight}</TableCell>
+                              <TableCell className="text-white text-center">{item.purity}</TableCell>
+                              <TableCell className="text-white text-center">{item.netWeight}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             {paymentsLoading ? (
               <div className="flex items-center justify-center h-32">
                 <p className="text-gray-500">Loading payments...</p>
@@ -650,6 +728,70 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                 </Table>
               </div>
             )}
+          </div>
+
+          {/* Loan Notes Section */}
+          <div className="mt-8">
+            <Card className="border border-gray-600">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg font-bold text-white">Notes</CardTitle>
+                {!editingNotes && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setEditingNotes(true)}
+                  >
+                    <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {editingNotes ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="Add notes about this loan..."
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                      className="bg-black border-gray-600 text-white min-h-[120px]"
+                      rows={5}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingNotes(false);
+                          setNotes(loan?.notes || "");
+                        }}
+                        className="border-gray-600 text-gray-400 hover:text-white"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          updateNotesMutation.mutate({ notes });
+                        }}
+                        disabled={updateNotesMutation.isPending}
+                        className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
+                      >
+                        <Save className="h-4 w-4 mr-1" />
+                        Save Notes
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="min-h-[80px]">
+                    {notes && notes.trim() ? (
+                      <p className="text-white text-sm whitespace-pre-wrap">{notes}</p>
+                    ) : (
+                      <p className="text-gray-500 text-sm italic">No notes added yet. Click the edit button to add notes.</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </DialogContent>
       </Dialog>
