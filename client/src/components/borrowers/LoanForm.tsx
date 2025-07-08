@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Calculator, CircleDollarSign, Plus, Circle, Gem, Layers, Coins } from "lucide-react";
+import { Calculator, CircleDollarSign, Plus, Circle, Gem, Layers, Coins, BookOpen, Shield, StickyNote } from "lucide-react";
 
 // Loan form schema with basic validation
 const loanFormSchema = z.object({
@@ -272,7 +272,9 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h4 className="font-medium text-white mb-4">Loan Details</h4>
+            <h4 className="font-medium text-white mb-4 flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-blue-400" /> Loan Details
+            </h4>
             <div className="space-y-4">
               <FormField
                 control={form.control}
@@ -344,7 +346,9 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
 
           {!isNewBorrower && (
             <div>
-              <h4 className="font-medium text-white mb-4">Guarantor Information</h4>
+              <h4 className="font-medium text-white mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-green-400" /> Guarantor Information
+              </h4>
               <div className="space-y-4">
                 <FormField
                   control={form.control}
@@ -834,7 +838,9 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
             name="notes"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-lg font-bold text-white">Notes</FormLabel>
+                <FormLabel className="text-lg font-bold text-white flex items-center gap-2">
+                  <StickyNote className="h-5 w-5 text-yellow-400" /> Notes
+                </FormLabel>
                 <FormControl>
                   <textarea
                     rows={4}
