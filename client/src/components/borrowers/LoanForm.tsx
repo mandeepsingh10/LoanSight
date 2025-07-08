@@ -424,7 +424,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                       name="itemName"
                       render={({ field }) => (
                         <FormItem className="space-y-2">
-                          <FormLabel className="text-sm font-medium text-amber-200/90">
+                          <FormLabel className="text-sm font-medium text-amber-200/90 ml-4">
                             Item
                           </FormLabel>
                           <FormControl>
@@ -555,7 +555,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                       name="silverItemName"
                       render={({ field }) => (
                         <FormItem className="space-y-2">
-                          <FormLabel className="text-sm font-medium text-slate-200/90">
+                          <FormLabel className="text-sm font-medium text-slate-200/90 ml-4">
                             Item
                           </FormLabel>
                           <FormControl>
