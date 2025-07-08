@@ -173,7 +173,14 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
     setDeleteConfirmText("");
   };
 
-  const filteredLoans = getFilteredLoans();
+  // Sort so most recent loan is at the top
+  const filteredLoans = getFilteredLoans().slice().sort((a, b) => {
+    // Prefer createdAt if available, else use id
+    if (a.createdAt && b.createdAt) {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    return b.id - a.id;
+  });
   console.log("All loans:", loans);
   console.log("Filtered loans:", filteredLoans);
   console.log("Active tab:", activeTab);
@@ -253,7 +260,6 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
                   <td className="px-6 py-4 whitespace-nowrap text-white text-left">{getLoanStrategyDisplay(loan.loanStrategy)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-center text-white">{loan.tenure ? `${loan.tenure} months` : 'NA'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-center text-white">
-                    <span className="text-gray-400 mr-1">Next:</span>
                     <span className="font-medium whitespace-nowrap">{loan.nextPayment}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
