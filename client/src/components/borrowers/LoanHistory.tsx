@@ -263,10 +263,11 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
                         <Clock className="h-4 w-4 text-gray-500" />
                         <span>{loan.tenure ? `${loan.tenure} months` : 'NA'}</span>
                       </div>
-                      <div className="flex items-center space-x-2 justify-between md:justify-end w-full">
-                        <span className="text-gray-500">Next:</span>
-                        <span className="font-medium">{loan.nextPayment}</span>
-                        <span className="flex-1"></span>
+                      <div className="flex items-center justify-end gap-4 w-full">
+                        <div className="flex items-center">
+                          <span className="text-gray-500 mr-1">Next:</span>
+                          <span className="font-medium whitespace-nowrap">{loan.nextPayment}</span>
+                        </div>
                         {activeTab === "all" && getStatusBadge(loan.status)}
                         <div className="flex items-center space-x-2">
                           <Button
