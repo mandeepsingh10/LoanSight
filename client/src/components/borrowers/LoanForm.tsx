@@ -454,7 +454,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full self-end"
+                      className={`w-full self-end ${showCalculator ? 'border-2 border-blue-500' : ''}`}
                       onClick={() => setShowCalculator((prev) => !prev)}
                     >
                       <Calculator className="h-4 w-4 mr-2" /> EMI Calculator
@@ -473,10 +473,10 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                   <Input
                     type="number"
                     min={1}
-                    placeholder="Principal Amount"
+                    placeholder="Enter Principal amount"
                     value={calculatorValues.principal}
                     onChange={e => handleCalculatorChange('principal', e.target.value)}
-                    className="bg-zinc-800 text-white"
+                    className="bg-zinc-800 text-white text-xs placeholder:text-xs"
                   />
                 </div>
                 <div className="flex-1 flex flex-col gap-4">
@@ -484,10 +484,10 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                   <Input
                     type="number"
                     min={0}
-                    placeholder="Interest Rate (%)"
+                    placeholder="Enter Rate"
                     value={calculatorValues.interestRate}
                     onChange={e => handleCalculatorChange('interestRate', e.target.value)}
-                    className="bg-zinc-800 text-white"
+                    className="bg-zinc-800 text-white text-xs placeholder:text-xs"
                   />
                 </div>
                 <div className="flex-1 flex flex-col gap-4">
@@ -495,10 +495,10 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                   <Input
                     type="number"
                     min={1}
-                    placeholder="Tenure (Months)"
+                    placeholder="Enter Tenure"
                     value={calculatorValues.tenure}
                     onChange={e => handleCalculatorChange('tenure', e.target.value)}
-                    className="bg-zinc-800 text-white"
+                    className="bg-zinc-800 text-white text-xs placeholder:text-xs"
                   />
                 </div>
                 <div className="flex-1 flex flex-col gap-4">
@@ -507,12 +507,57 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                     type="text"
                     value={`₹${calculateEMI().toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
                     readOnly
-                    className="bg-zinc-800 text-blue-400 font-bold cursor-not-allowed"
+                    className="bg-zinc-800 text-blue-400 font-bold cursor-not-allowed text-xs placeholder:text-xs"
                   />
                 </div>
               </div>
             </div>
           </>
+        )}
+
+        {/* Payment Information for FLAT loans only */}
+        {loanStrategy === "flat" && (
+          <div className="mt-6">
+            <h4 className="font-medium text-white mb-4 flex items-center gap-2">
+              <CircleDollarSign className="h-5 w-5 text-blue-400" /> Payment Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="flatMonthlyAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Monthly Payment Amount (₹)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="Enter monthly amount"
+                        {...field}
+                        className="bg-black text-white"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <div className="text-xs text-gray-400 mt-1">
+                      The fixed amount the borrower will pay every month.
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Payment Information for CUSTOM loans only */}
+        {loanStrategy === "custom" && (
+          <div className="mt-6">
+            <h4 className="font-medium text-white mb-4 flex items-center gap-2">
+              <CircleDollarSign className="h-5 w-5 text-blue-400" /> Payment Information
+            </h4>
+            <div className="text-sm text-gray-300">
+              For custom loans, payments will be manually added after loan
+            </div>
+          </div>
         )}
 
         {/* Move Precious Metal Details section here, outside the grid */}
