@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { 
   Plus, 
-  Eye, 
+  Pencil, 
   Trash2,
   DollarSign, 
   Calendar, 
@@ -250,7 +250,7 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm items-center">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm items-center">
                       <div className="flex items-center space-x-2">
                         <DollarSign className="h-4 w-4 text-gray-500" />
                         <span className="font-medium">{formatCurrency(loan.amount)}</span>
@@ -263,34 +263,28 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
                         <Clock className="h-4 w-4 text-gray-500" />
                         <span>{loan.tenure ? `${loan.tenure} months` : 'NA'}</span>
                       </div>
-                      <div className="flex items-center justify-end gap-4 w-full">
-                        <div className="flex items-center">
-                          <span className="text-gray-500 mr-1">Next:</span>
-                          <span className="font-medium whitespace-nowrap">{loan.nextPayment}</span>
-                        </div>
+                      <div className="flex items-center">
+                        <span className="text-gray-500 mr-1">Next:</span>
+                        <span className="font-medium whitespace-nowrap">{loan.nextPayment}</span>
+                      </div>
+                      <div className="flex items-center justify-end gap-2 w-full">
                         {activeTab === "all" && getStatusBadge(loan.status)}
-                        <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onViewLoan(loan, index + 1)}
+                        >
+                          <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
+                        </Button>
+                        {isAdmin && (
                           <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onViewLoan(loan, index + 1)}
-                            className="flex items-center"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setConfirmDeleteLoan(loan.id)}
                           >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
+                            <Trash2 size={16} className="text-red-500 hover:text-red-400" />
                           </Button>
-                          {isAdmin && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setConfirmDeleteLoan(loan.id)}
-                              className="flex items-center text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Delete
-                            </Button>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
