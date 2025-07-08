@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -49,7 +49,8 @@ import {
   Pencil,
   X,
   Save,
-  History
+  History,
+  RotateCcw
 } from "lucide-react";
 import { Loan, Payment } from "@/types";
 
@@ -98,6 +99,17 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState("");
 
+  // State for editing a payment transaction in history
+  const [editingTransactionId, setEditingTransactionId] = useState<number | null>(null);
+  // Add upiId to editTransactionForm state
+  const [editTransactionForm, setEditTransactionForm] = useState({
+    amount: '',
+    paidDate: '',
+    paymentMethod: '',
+    notes: '',
+    upiId: ''
+  });
+
   // Fetch payments for this specific loan
   const { data: payments = [], isLoading: paymentsLoading } = useQuery({
     queryKey: ["/api/payments", "loan", loan?.id],
@@ -119,7 +131,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
 
   // Fetch payment transactions for each payment
   const { data: paymentTransactionsMap = {}, isLoading: transactionsLoading } = useQuery({
-    queryKey: ["/api/payments/transactions", "loan", loan?.id],
+    queryKey: ["/api/payments/transactions", "loan", loan?.id, payments.length],
     queryFn: async () => {
       if (!loan || !payments.length) return {};
       
@@ -146,6 +158,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
     enabled: isOpen && !!loan && payments.length > 0,
     refetchOnWindowFocus: false,
     staleTime: 0, // Always refetch when payments change
+    refetchOnMount: true, // Always refetch when component mounts
   });
 
   // Add single payment mutation
@@ -229,7 +242,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Success",
         description: "Payment collected successfully",
@@ -241,9 +254,17 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       setPaymentNotes("");
       setUpiId("");
       setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
-      // Invalidate and refetch queries to update the UI
-      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      
+      // First invalidate payments query and wait for it to refetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      
+      // Then invalidate payment transactions query to ensure it refetches with updated payment data
       queryClient.invalidateQueries({ queryKey: ["/api/payments/transactions", "loan", loan?.id] });
+      
+      // Also refetch payment transactions for the specific payment that was just collected
+      if (selectedPayment) {
+        queryClient.invalidateQueries({ queryKey: ["/api/payments/" + selectedPayment.id + "/transactions"] });
+      }
     },
     onError: (error) => {
       // Extract user-friendly error message
@@ -324,6 +345,30 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         variant: "destructive",
       });
     },
+  });
+
+  const queryClient = useQueryClient();
+  const editTransactionMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number, data: any }) => {
+      const response = await apiRequest("PATCH", `/api/payment-transactions/${id}`, data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update transaction");
+      }
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      setEditingTransactionId(null);
+      setEditTransactionForm({ amount: '', paidDate: '', paymentMethod: '', notes: '', upiId: '' });
+      toast({ title: "Transaction updated", description: "Payment transaction updated successfully." });
+      // Refetch payment history for the selected payment
+      if (selectedPaymentForHistory) {
+        queryClient.invalidateQueries({ queryKey: ["/api/payments/" + selectedPaymentForHistory.id + "/transactions"] });
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update transaction.", variant: "destructive" });
+    }
   });
 
   useEffect(() => {
@@ -456,22 +501,33 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const handleSubmitCollection = () => {
     if (!selectedPayment) return;
     
-    const paidAmount = parseFloat(paymentAmount);
-    
     // Prepare notes - include UPI ID if UPI payment method is selected
     let finalNotes = paymentNotes;
     if (paymentMethod === "upi" && upiId.trim()) {
       finalNotes = finalNotes ? `${paymentNotes}\nUPI ID: ${upiId}` : `UPI ID: ${upiId}`;
     }
     
-    collectPaymentMutation.mutate({
-      id: selectedPayment.id,
-      paidAmount: paidAmount,
-      paymentMethod,
-      notes: finalNotes,
-      upiId: upiId,
-      paymentDate: paymentDate,
-    });
+    // Check if this is a note-only update for an already collected payment
+    const isNoteOnlyUpdate = selectedPayment.paidAmount > 0 && selectedPayment.dueAmount === 0;
+    
+    if (isNoteOnlyUpdate) {
+      // For note-only updates, only send notes
+      collectPaymentMutation.mutate({
+        id: selectedPayment.id,
+        notes: finalNotes,
+      });
+    } else {
+      // For payment collection, send all fields
+      const paidAmount = parseFloat(paymentAmount);
+      collectPaymentMutation.mutate({
+        id: selectedPayment.id,
+        paidAmount: paidAmount,
+        paymentMethod,
+        notes: finalNotes,
+        upiId: upiId,
+        paymentDate: paymentDate,
+      });
+    }
   };
 
   const handleEditPayment = (payment: Payment) => {
@@ -507,6 +563,63 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const handleUpdateStatus = (status: string) => {
     // This function can be used to update loan status if needed
     console.log("Update status to:", status);
+  };
+
+  // Helper to determine if payment is already collected
+  const isCollected = !!selectedPayment && selectedPayment.paidAmount > 0;
+
+  // Helper to determine dialog mode
+  const isFirstTimeCollection = !!selectedPayment && (!selectedPayment.paidAmount || selectedPayment.paidAmount === 0);
+  const isPartialCollection = !!selectedPayment && selectedPayment.paidAmount > 0 && selectedPayment.dueAmount > 0;
+  const isFullyCollected = !!selectedPayment && selectedPayment.paidAmount > 0 && selectedPayment.dueAmount === 0;
+
+  // Handler for resetting a payment (UI only, backend logic can be added as needed)
+  const handleResetPayment = (payment: Payment) => {
+    // TODO: Implement backend reset logic
+    toast({
+      title: "Reset Payment",
+      description: `Reset requested for payment due on ${format(new Date(payment.dueDate), "MMM d, yyyy")}`,
+    });
+  };
+
+  const handleEditTransaction = (transaction: any) => {
+    // Try to extract UPI ID from notes if present
+    let upiId = '';
+    if (transaction.paymentMethod === 'upi' && transaction.notes) {
+      const match = transaction.notes.match(/UPI ID: ([^\s]+)/);
+      if (match) upiId = match[1];
+    }
+    setEditingTransactionId(transaction.id);
+    setEditTransactionForm({
+      amount: transaction.amount.toString(),
+      paidDate: transaction.paidDate,
+      paymentMethod: transaction.paymentMethod || '',
+      notes: transaction.notes ? transaction.notes.replace(/\n?UPI ID: [^\s]+/, '').trim() : '',
+      upiId: upiId
+    });
+  };
+
+  const handleCancelEditTransaction = () => {
+    setEditingTransactionId(null);
+    setEditTransactionForm({ amount: '', paidDate: '', paymentMethod: '', notes: '', upiId: '' });
+  };
+
+  const handleSaveEditTransaction = () => {
+    if (!editingTransactionId) return;
+    // Compose notes with UPI ID if needed
+    let notes = editTransactionForm.notes;
+    if (editTransactionForm.paymentMethod === 'upi' && editTransactionForm.upiId) {
+      notes = notes ? `${notes}\nUPI ID: ${editTransactionForm.upiId}` : `UPI ID: ${editTransactionForm.upiId}`;
+    }
+    editTransactionMutation.mutate({
+      id: editingTransactionId,
+      data: {
+        amount: parseFloat(editTransactionForm.amount),
+        paidDate: editTransactionForm.paidDate,
+        paymentMethod: editTransactionForm.paymentMethod,
+        notes: notes
+      }
+    });
   };
 
   if (!loan) return null;
@@ -678,11 +791,11 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleEditPayment(payment)}
+                                onClick={() => handleResetPayment(payment)}
                                 className="h-8 w-8 p-0 hover:!bg-black"
-                                title="Edit Payment"
+                                title="Reset Payment"
                               >
-                                <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
+                                <RotateCcw size={16} className="text-red-400 hover:text-red-300" />
                               </Button>
                             )}
                             <Button
@@ -807,27 +920,155 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                   <div className="space-y-3">
                     <div className="text-sm font-medium text-gray-300">Payment Records</div>
                     <div className="space-y-2">
-                      {paymentTransactionsMap[selectedPaymentForHistory.id].map((transaction: any) => (
-                        <div key={transaction.id} className="p-3 bg-gray-800 rounded-lg border border-gray-700">
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="text-sm font-medium text-white">
-                              {format(new Date(transaction.paidDate), "EEEE, MMMM d, yyyy")}
-                            </div>
-                            <div className="text-lg font-bold text-green-400">
-                              {formatCurrency(transaction.amount)}
+                      {paymentTransactionsMap[selectedPaymentForHistory.id].map((transaction: any, index: number) => (
+                        <div key={transaction.id} className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg border border-gray-600 shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden">
+                          {/* Sequence Number Header */}
+                          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-3 py-1.5 border-b border-gray-600">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-white text-blue-700 text-xs font-bold rounded-full flex items-center justify-center shadow-sm">
+                                  {index + 1}
+                                </div>
+                                <span className="text-white font-medium text-xs">Payment #{index + 1}</span>
+                              </div>
+                              <div className="text-white text-xs opacity-80">
+                                {format(new Date(transaction.paidDate), "MMM d, yyyy")}
+                              </div>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-400">Payment Mode:</span>
-                              <span className="ml-2 text-white capitalize">
-                                {transaction.paymentMethod ? transaction.paymentMethod.replace('_', ' ') : 'Not specified'}
-                              </span>
-                            </div>
-                            {transaction.notes && (
-                              <div className="col-span-2">
-                                <span className="text-gray-400">Notes:</span>
-                                <span className="ml-2 text-white">{transaction.notes}</span>
+                          
+                          <div className="p-3">
+                            {editingTransactionId === transaction.id ? (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <Label htmlFor="edit-paid-date" className="text-gray-300 font-medium text-xs">Date</Label>
+                                    <Input
+                                      id="edit-paid-date"
+                                      type="date"
+                                      value={editTransactionForm.paidDate}
+                                      onChange={e => setEditTransactionForm(f => ({ ...f, paidDate: e.target.value }))}
+                                      className="mt-1 bg-gray-700 border-gray-600 text-white focus:border-blue-500 h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="edit-amount" className="text-gray-300 font-medium text-xs">Amount</Label>
+                                    <Input
+                                      id="edit-amount"
+                                      type="number"
+                                      value={editTransactionForm.amount}
+                                      onChange={e => setEditTransactionForm(f => ({ ...f, amount: e.target.value }))}
+                                      className="mt-1 bg-gray-700 border-gray-600 text-white focus:border-blue-500 h-8 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <Label htmlFor="edit-method" className="text-gray-300 font-medium text-xs">Payment Method</Label>
+                                    <select
+                                      id="edit-method"
+                                      value={editTransactionForm.paymentMethod}
+                                      onChange={e => setEditTransactionForm(f => ({ ...f, paymentMethod: e.target.value }))}
+                                      className="flex h-8 w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-white focus:border-blue-500 mt-1"
+                                    >
+                                      <option value="">Select</option>
+                                      <option value="cash">Cash</option>
+                                      <option value="bank_transfer">Bank Transfer</option>
+                                      <option value="upi">UPI</option>
+                                      <option value="other">Other</option>
+                                    </select>
+                                  </div>
+                                  {editTransactionForm.paymentMethod === "upi" && (
+                                    <div>
+                                      <Label htmlFor="edit-upi-id" className="text-gray-300 font-medium text-xs">UPI ID</Label>
+                                      <Input
+                                        id="edit-upi-id"
+                                        type="text"
+                                        value={editTransactionForm.upiId}
+                                        onChange={e => setEditTransactionForm(f => ({ ...f, upiId: e.target.value }))}
+                                        className="mt-1 bg-gray-700 border-gray-600 text-white focus:border-blue-500 h-8 text-sm"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <Label htmlFor="edit-notes" className="text-gray-300 font-medium text-xs">Notes</Label>
+                                  <Textarea
+                                    id="edit-notes"
+                                    placeholder="Add any additional notes about this payment"
+                                    value={editTransactionForm.notes}
+                                    onChange={e => setEditTransactionForm(f => ({ ...f, notes: e.target.value }))}
+                                    rows={2}
+                                    className="w-full mt-1 bg-gray-700 border-gray-600 text-white focus:border-blue-500 text-sm"
+                                  />
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <Button size="sm" onClick={handleSaveEditTransaction} className="bg-green-600 hover:bg-green-700 text-white font-medium text-xs h-7 px-3">
+                                    Save
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={handleCancelEditTransaction} className="border-gray-600 text-gray-300 hover:bg-gray-700 text-xs h-7 px-3">
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {/* Payment Details */}
+                                <div className="grid grid-cols-1 gap-2">
+                                  <div className="flex items-center justify-between p-2 bg-gray-700 rounded-md">
+                                    <span className="text-gray-400 font-medium text-xs">Amount:</span>
+                                    <span className="text-green-400 font-bold text-sm">
+                                      {formatCurrency(transaction.amount)}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between p-2 bg-gray-700 rounded-md">
+                                    <span className="text-gray-400 font-medium text-xs">Payment mode:</span>
+                                    <span className="text-white font-medium text-xs capitalize">
+                                      {transaction.paymentMethod ? transaction.paymentMethod.replace('_', ' ') : 'Not specified'}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Show UPI ID if payment method is UPI */}
+                                  {transaction.paymentMethod === 'upi' && transaction.notes && transaction.notes.match(/UPI ID: ([^\s]+)/) && (
+                                    <div className="flex items-center justify-between p-2 bg-gray-700 rounded-md">
+                                      <span className="text-gray-400 font-medium text-xs">UPI ID:</span>
+                                      <span className="text-white font-mono text-xs">
+                                        {transaction.notes.match(/UPI ID: ([^\s]+)/)[1]}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Notes */}
+                                  {transaction.notes && (
+                                    (() => {
+                                      const notesContent = transaction.paymentMethod === 'upi' 
+                                        ? transaction.notes.replace(/\n?UPI ID: [^\s]+/, '').trim() 
+                                        : transaction.notes;
+                                      
+                                      return notesContent ? (
+                                        <div className="p-2 bg-gray-700 rounded-md">
+                                          <div className="text-gray-400 font-medium text-xs mb-1">Notes:</div>
+                                          <div className="text-white text-xs leading-relaxed">
+                                            {notesContent}
+                                          </div>
+                                        </div>
+                                      ) : null;
+                                    })()
+                                  )}
+                                </div>
+                                
+                                {/* Action Button */}
+                                <div className="flex justify-end pt-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => handleEditTransaction(transaction)}
+                                    className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors h-7 w-7 p-0"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </Button>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1004,76 +1245,107 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       <Dialog open={collectionDialog} onOpenChange={setCollectionDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Record Payment Collection</DialogTitle>
+            <DialogTitle>
+              {(isFirstTimeCollection || isPartialCollection) ? "Record Payment Collection" : "Edit Payment Details"}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedPayment && selectedPayment.dueDate ? (
+                (isFirstTimeCollection || isPartialCollection)
+                  ? `Record payment collection for EMI due on ${format(new Date(selectedPayment.dueDate), "MMMM d, yyyy")}`
+                  : `Edit details for EMI due on ${format(new Date(selectedPayment.dueDate), "MMMM d, yyyy")}`
+              ) : (
+                "Payment details"
+              )}
+            </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="grid gap-4">
-              <div>
-                <Label htmlFor="amount">Amount to Pay</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="Enter amount to pay"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="payment-date">Payment Date</Label>
-                <Input
-                  id="payment-date"
-                  type="date"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="method">Payment Method</Label>
-                <select
-                  id="method"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="cash">Cash</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="upi">UPI</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              
-              {paymentMethod === "upi" && (
-                <div>
-                  <Label htmlFor="upiId">UPI ID</Label>
-                  <Input
-                    id="upiId"
-                    type="text"
-                    placeholder="Enter UPI ID (e.g., user@paytm)"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    className="mt-1"
-                  />
+          {/* Due Amount Display - Only show for first time or partial collection */}
+          {(isFirstTimeCollection || isPartialCollection) && selectedPayment && selectedPayment.dueAmount > 0 && (
+            <div className="p-3 bg-gray-900 rounded-lg border border-gray-700">
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-gray-400">Outstanding Amount:</div>
+                <div className="text-lg font-semibold text-orange-500">
+                  {formatCurrency(selectedPayment.dueAmount)}
                 </div>
-              )}
-              
-              <div>
-                <Label htmlFor="notes">Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Add any additional information"
-                  value={paymentNotes}
-                  onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="mt-1"
-                />
               </div>
             </div>
+          )}
+          <div className="space-y-4">
+            {(isFirstTimeCollection || isPartialCollection) ? (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="amount">Payment Amount (₹)</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    placeholder="Enter payment amount"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    className="bg-black border-gray-600 text-white"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="payment-date">Payment Date</Label>
+                  <Input
+                    id="payment-date"
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="bg-black border-gray-600 text-white"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="method">Payment Method</Label>
+                  <select
+                    id="method"
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="upi">UPI</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                {paymentMethod === "upi" && (
+                  <div>
+                    <Label htmlFor="upiId">UPI ID</Label>
+                    <Input
+                      id="upiId"
+                      type="text"
+                      placeholder="Enter UPI ID (e.g., user@paytm)"
+                      value={upiId}
+                      onChange={(e) => setUpiId(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="p-4 bg-green-900/20 border border-green-600 rounded-lg">
+                <div className="text-sm text-green-400 font-medium mb-2">
+                  ✅ Payment Collected
+                </div>
+                <div className="text-sm text-gray-300">
+                  This payment has been collected on {selectedPayment && selectedPayment.paidDate && format(new Date(selectedPayment.paidDate), "MMMM d, yyyy")}
+                </div>
+                <div className="text-xs text-gray-400 mt-2">
+                  Check payment history for detailed transaction records.
+                </div>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Add any additional information"
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+                className="mt-1"
+              />
+            </div>
           </div>
-          
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
@@ -1084,7 +1356,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
               disabled={collectPaymentMutation.isPending}
               className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
             >
-              {collectPaymentMutation.isPending ? "Processing..." : "Save"}
+              {collectPaymentMutation.isPending ? "Processing..." : ((isFirstTimeCollection || isPartialCollection) ? "Save" : "Update Notes")}
             </Button>
           </DialogFooter>
         </DialogContent>

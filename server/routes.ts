@@ -1847,6 +1847,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/payment-transactions/:id', requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { amount, paidDate, paymentMethod, notes } = req.body;
+      const updated = await storage.updatePaymentTransaction(id, {
+        amount,
+        paidDate,
+        paymentMethod,
+        notes
+      });
+      if (!updated) {
+        return res.status(404).json({ message: 'Payment transaction not found' });
+      }
+      res.json(updated);
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   const httpServer = createServer(app);
 
 

@@ -69,6 +69,7 @@ export interface IStorage {
   getPaymentTransactionsByPaymentId(paymentId: number): Promise<PaymentTransaction[]>;
   createPaymentTransaction(transaction: InsertPaymentTransaction): Promise<PaymentTransaction>;
   deletePaymentTransaction(id: number): Promise<boolean>;
+  updatePaymentTransaction(id: number, data: Partial<PaymentTransaction>): Promise<PaymentTransaction | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -387,6 +388,27 @@ export class DatabaseStorage implements IStorage {
     // Handle each field separately with proper type conversion
     if (data.paidDate !== undefined) {
       updateData.paidDate = typeof data.paidDate === 'string' ? data.paidDate : null;
+    }
+    
+    // Check if this is a note-only update for an already collected payment
+    const isNoteOnlyUpdate = data.paidAmount === undefined && 
+      data.paidDate === undefined && 
+      data.paymentMethod === undefined && 
+      data.notes !== undefined && 
+      currentPayment.paidAmount && currentPayment.paidAmount > 0;
+    
+    if (isNoteOnlyUpdate) {
+      // For note-only updates on already collected payments, just update the notes
+      updateData.notes = data.notes;
+      
+      // Log what we're updating for debugging
+      console.log("Updating notes for collected payment:", { id, updateData });
+      
+      const result = await db.update(payments)
+        .set(updateData)
+        .where(eq(payments.id, id))
+        .returning();
+      return result.length > 0 ? result[0] : undefined;
     }
     
     if (data.paidAmount !== undefined) {
@@ -796,6 +818,50 @@ export class DatabaseStorage implements IStorage {
   async deletePaymentTransaction(id: number): Promise<boolean> {
     const result = await db.delete(paymentTransactions).where(eq(paymentTransactions.id, id)).returning();
     return result.length > 0;
+  }
+
+  async updatePaymentTransaction(id: number, data: Partial<PaymentTransaction>): Promise<PaymentTransaction | undefined> {
+    // Fetch the transaction to get paymentId
+    const existing = await db.select().from(paymentTransactions).where(eq(paymentTransactions.id, id));
+    if (!existing.length) return undefined;
+    const paymentId = existing[0].paymentId;
+    // Get all other transactions for this payment
+    const otherTransactions = await db.select().from(paymentTransactions)
+      .where(and(eq(paymentTransactions.paymentId, paymentId), sql`id != ${id}`));
+    const otherTotal = otherTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+    // Get the parent payment
+    const payment = await db.select().from(payments).where(eq(payments.id, paymentId));
+    if (!payment.length) return undefined;
+    const originalAmount = payment[0].amount;
+    // The new amount for this transaction (if being updated)
+    const newAmount = data.amount !== undefined ? data.amount : existing[0].amount;
+    const newTotal = otherTotal + (newAmount || 0);
+    if (newTotal > originalAmount) {
+      throw new Error(`Total payment amount cannot exceed EMI amount. EMI: ${originalAmount}, Current total: ${otherTotal}, New amount: ${newAmount}, Total would be: ${newTotal}`);
+    }
+    // Proceed with update
+    const result = await db.update(paymentTransactions)
+      .set(data)
+      .where(eq(paymentTransactions.id, id))
+      .returning();
+    const updated = result.length > 0 ? result[0] : undefined;
+    if (updated) {
+      // Recalculate parent payment totals
+      const allTransactions = await db.select().from(paymentTransactions).where(eq(paymentTransactions.paymentId, paymentId));
+      const totalPaid = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+      const dueAmount = Math.max(0, originalAmount - totalPaid);
+      let status = 'collected';
+      if (dueAmount > 0 && totalPaid > 0) status = 'due_soon';
+      if (totalPaid === 0) status = 'upcoming';
+      await db.update(payments)
+        .set({
+          paidAmount: totalPaid,
+          dueAmount: dueAmount,
+          status: status
+        })
+        .where(eq(payments.id, paymentId));
+    }
+    return updated;
   }
 }
 
