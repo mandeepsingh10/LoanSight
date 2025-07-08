@@ -405,6 +405,116 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
           )}
         </div>
 
+        {/* Payment Information for EMI loans only */}
+        {loanStrategy === "emi" && (
+          <>
+            <div className="mt-6">
+              <h4 className="font-medium text-white mb-4 flex items-center gap-2">
+                <CircleDollarSign className="h-5 w-5 text-blue-400" /> Payment Information
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                <FormField
+                  control={form.control}
+                  name="tenure"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Loan Tenure (Months)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="e.g. 12"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="customEmiAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>EMI Amount (₹)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="e.g. 1000"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="h-full flex flex-col justify-end">
+                  <div className="flex h-full items-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full self-end"
+                      onClick={() => setShowCalculator((prev) => !prev)}
+                    >
+                      <Calculator className="h-4 w-4 mr-2" /> EMI Calculator
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Animated EMI Calculator below the Payment Information row */}
+            <div
+              className={`transition-all duration-300 overflow-hidden ${showCalculator ? 'max-h-[500px] opacity-100 mt-4' : 'max-h-0 opacity-0'} w-full`}
+            >
+              <div className="w-full bg-zinc-900 border border-blue-700 rounded-lg p-6 flex flex-col md:flex-row gap-6">
+                <div className="flex-1 flex flex-col gap-4">
+                  <label className="text-sm text-white font-medium">Principal Amount</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Principal Amount"
+                    value={calculatorValues.principal}
+                    onChange={e => handleCalculatorChange('principal', e.target.value)}
+                    className="bg-zinc-800 text-white"
+                  />
+                </div>
+                <div className="flex-1 flex flex-col gap-4">
+                  <label className="text-sm text-white font-medium">Interest Rate (%)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Interest Rate (%)"
+                    value={calculatorValues.interestRate}
+                    onChange={e => handleCalculatorChange('interestRate', e.target.value)}
+                    className="bg-zinc-800 text-white"
+                  />
+                </div>
+                <div className="flex-1 flex flex-col gap-4">
+                  <label className="text-sm text-white font-medium">Tenure (Months)</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Tenure (Months)"
+                    value={calculatorValues.tenure}
+                    onChange={e => handleCalculatorChange('tenure', e.target.value)}
+                    className="bg-zinc-800 text-white"
+                  />
+                </div>
+                <div className="flex-1 flex flex-col gap-4">
+                  <label className="text-sm text-white font-medium">Calculated EMI</label>
+                  <Input
+                    type="text"
+                    value={`₹${calculateEMI().toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                    readOnly
+                    className="bg-zinc-800 text-blue-400 font-bold cursor-not-allowed"
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
         {/* Move Precious Metal Details section here, outside the grid */}
         {loanStrategy === "gold_silver" && (
           <div className="w-full flex flex-col md:flex-row gap-6">
