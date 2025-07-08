@@ -403,437 +403,275 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
               </div>
             </div>
           )}
+        </div>
 
-          <div>
-            <h4 className="font-medium text-white mb-4">
-              {loanStrategy === "gold_silver" ? "Precious Metal Details" : "Payment Information"}
-            </h4>
-            <Separator className="my-4" />
-            <div className="w-full space-y-4">
-              {loanStrategy === "emi" && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="tenure"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Loan Tenure (Months)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="text"
-                            placeholder="Enter months"
-                            {...field}
-                          />
-                        </FormControl>
-
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="customEmiAmount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>EMI Amount (₹)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="text"
-                            placeholder="Enter monthly EMI"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Enter the fixed monthly payment amount.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* EMI Calculator Toggle */}
-                  <div className="flex items-center space-x-3 py-3">
-                    <Switch
-                      id="show-calculator"
-                      checked={showCalculator}
-                      onCheckedChange={setShowCalculator}
+        {/* Move Precious Metal Details section here, outside the grid */}
+        {loanStrategy === "gold_silver" && (
+          <div className="w-full flex flex-col md:flex-row gap-6">
+            <div className="flex-1 min-w-0">
+              <Card className="bg-gradient-to-br from-black via-zinc-900 to-neutral-900 border-2 border-amber-400/80 shadow-2xl w-full overflow-hidden relative backdrop-blur-xl">
+                <div className="absolute inset-0 bg-white/10 backdrop-blur-xl pointer-events-none" />
+                <CardHeader className="bg-gradient-to-r from-amber-900/40 via-amber-800/30 to-yellow-800/40 text-white pb-2 backdrop-blur-sm border-b border-amber-500/30">
+                  <CardTitle className="text-base flex items-center gap-2 font-semibold -mt-1">
+                    <Layers className="h-6 w-6 text-amber-400" />
+                    Gold Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 bg-gradient-to-br from-zinc-900/60 via-neutral-900/50 to-black/60 backdrop-blur-xl">
+                  <div className="grid grid-cols-4 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="itemName"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-sm font-medium text-amber-200/90">
+                            Item
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              placeholder=""
+                              className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <label
-                      htmlFor="show-calculator"
-                      className="text-sm font-medium text-white cursor-pointer flex items-center gap-2"
-                    >
-                      <Calculator className="h-4 w-4" />
-                      Use EMI Calculator
-                    </label>
+                    <FormField
+                      control={form.control}
+                      name="metalWeight"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-sm font-medium text-amber-200/90">
+                            Weight (g)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              placeholder=""
+                              className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                handleGoldSilverChange('metalWeight', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="purity"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-sm font-medium text-amber-200/90">
+                            Purity (%)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              placeholder=""
+                              className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                handleGoldSilverChange('purity', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="netWeight"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-sm font-medium text-amber-200/90">
+                            Net weight
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              placeholder=""
+                              className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 cursor-not-allowed opacity-75 backdrop-blur-sm shadow-inner"
+                              value={goldSilverValues.netWeight.toFixed(3)}
+                              readOnly
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-
-                  {/* EMI Calculator - shown below toggle when enabled */}
-                  {showCalculator && (
-                    <Card className="bg-black border-2 border-gray-700 shadow-lg w-full">
-                      <CardHeader className="bg-black text-white pb-3">
-                        <CardTitle className="text-base flex items-center gap-3 font-semibold">
-                          <div className="bg-white/20 p-2 rounded-lg">
-                            <Calculator className="h-5 w-5" />
-                          </div>
-                          EMI Calculator
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-8 bg-black">
-                        {/* Horizontal Layout with maximum space */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 items-end w-full">
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-white block">
-                              Principal Amount (₹)
-                            </label>
+                  <div className="mt-6 flex justify-center">
+                    <Button
+                      type="button"
+                      className="bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white px-3 py-1 rounded-lg text-xs font-medium shadow-lg border border-amber-400/50 backdrop-blur-sm"
+                      onClick={() => {
+                        setGoldItems([
+                          ...goldItems,
+                          {
+                            itemName: form.getValues('itemName'),
+                            metalWeight: form.getValues('metalWeight'),
+                            purity: form.getValues('purity'),
+                            netWeight: goldSilverValues.netWeight.toFixed(3),
+                            notes: form.getValues('goldSilverNotes'),
+                            pmType: 'gold',
+                          },
+                        ]);
+                        // Clear fields after adding
+                        form.setValue('itemName', '');
+                        form.setValue('metalWeight', '');
+                        form.setValue('purity', '');
+                        setGoldSilverValues({ metalWeight: '', purity: '', netWeight: 0 });
+                      }}
+                    >
+                      <Plus className="h-2.5 w-2.5 mr-0.5" />
+                      Add Item
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="flex-1 min-w-0">
+              <Card className="bg-gradient-to-br from-black via-zinc-900 to-neutral-900 border-2 border-slate-400/80 shadow-2xl w-full overflow-hidden relative backdrop-blur-xl">
+                <div className="absolute inset-0 bg-white/10 backdrop-blur-xl pointer-events-none" />
+                <CardHeader className="bg-gradient-to-r from-slate-900/40 via-slate-800/30 to-slate-800/40 text-white pb-2 backdrop-blur-sm border-b border-slate-500/30">
+                  <CardTitle className="text-base flex items-center gap-2 font-semibold -mt-1">
+                    <Layers className="h-6 w-6 text-slate-400" />
+                    Silver Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 bg-gradient-to-br from-zinc-900/60 via-neutral-900/50 to-black/60 backdrop-blur-xl">
+                  <div className="grid grid-cols-4 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="silverItemName"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-sm font-medium text-slate-200/90">
+                            Item
+                          </FormLabel>
+                          <FormControl>
                             <Input
-                              type="number"
-                              placeholder="Enter loan amount"
-                              value={calculatorValues.principal}
-                              onChange={(e) => handleCalculatorChange('principal', e.target.value)}
-                              className="h-11 text-base border-2 border-gray-600 focus:border-white bg-gray-900 text-white placeholder:text-gray-400"
+                              type="text"
+                              placeholder=""
+                              className="h-9 text-sm bg-zinc-900/70 border-slate-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
+                              {...field}
                             />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-white block">
-                              Interest Rate (%)
-                            </label>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="silverMetalWeight"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-sm font-medium text-slate-200/90">
+                            Weight (g)
+                          </FormLabel>
+                          <FormControl>
                             <Input
-                              type="number"
-                              step="0.1"
-                              placeholder="Enter rate"
-                              value={calculatorValues.interestRate}
-                              onChange={(e) => handleCalculatorChange('interestRate', e.target.value)}
-                              className="h-11 text-base border-2 border-gray-600 focus:border-white bg-gray-900 text-white placeholder:text-gray-400"
+                              type="text"
+                              placeholder=""
+                              className="h-9 text-sm bg-zinc-900/70 border-slate-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                handleGoldSilverChange('metalWeight', e.target.value);
+                              }}
                             />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-white block">
-                              Tenure (Months)
-                            </label>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="silverPurity"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-sm font-medium text-slate-200/90">
+                            Purity (%)
+                          </FormLabel>
+                          <FormControl>
                             <Input
-                              type="number"
-                              placeholder="Enter months"
-                              value={calculatorValues.tenure}
-                              onChange={(e) => handleCalculatorChange('tenure', e.target.value)}
-                              className="h-11 text-base border-2 border-gray-600 focus:border-white bg-gray-900 text-white placeholder:text-gray-400"
+                              type="text"
+                              placeholder=""
+                              className="h-9 text-sm bg-zinc-900/70 border-slate-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                handleGoldSilverChange('purity', e.target.value);
+                              }}
                             />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-white block">
-                              Calculated EMI
-                            </label>
-                            <div className="h-11 px-3 py-2 text-base font-bold bg-gray-900 border-2 border-green-500 text-green-400 rounded-md flex items-center">
-                              {calculatorValues.principal && calculatorValues.interestRate && calculatorValues.tenure 
-                                ? `₹${Math.round(calculateEMI()).toLocaleString()}`
-                                : '₹0'
-                              }
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </>
-              )}
-
-              {loanStrategy === "flat" && (
-                <FormField
-                  control={form.control}
-                  name="flatMonthlyAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Monthly Payment Amount (₹)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="Enter monthly payment"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        The fixed amount the borrower will pay each month without a fixed end date.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {loanStrategy === "custom" && (
-                <div className="text-center p-4 bg-gray-800 border border-gray-600 rounded-lg">
-                  <p className="text-gray-300">
-                    For custom loans, payments will be added manually after loan creation.
-                  </p>
-                </div>
-              )}
-
-              {loanStrategy === "gold_silver" && (
-                <div className="w-full space-y-6">
-                  <Card className="bg-gradient-to-br from-black via-zinc-900 to-neutral-900 border-2 border-amber-400/80 shadow-2xl w-full overflow-hidden relative backdrop-blur-xl">
-                    <div className="absolute inset-0 bg-white/10 backdrop-blur-xl pointer-events-none" />
-                    <CardHeader className="bg-gradient-to-r from-amber-900/40 via-amber-800/30 to-yellow-800/40 text-white pb-2 backdrop-blur-sm border-b border-amber-500/30">
-                      <CardTitle className="text-base flex items-center gap-2 font-semibold -mt-1">
-                        <Layers className="h-6 w-6 text-amber-400" />
-                        Gold Details
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 bg-gradient-to-br from-zinc-900/60 via-neutral-900/50 to-black/60 backdrop-blur-xl">
-                      <div className="grid grid-cols-4 gap-6">
-                        <FormField
-                          control={form.control}
-                          name="itemName"
-                          render={({ field }) => (
-                            <FormItem className="space-y-2">
-                              <FormLabel className="text-sm font-medium text-amber-200/90">
-                                Item
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="text"
-                                  placeholder=""
-                                  className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="metalWeight"
-                          render={({ field }) => (
-                            <FormItem className="space-y-2">
-                              <FormLabel className="text-sm font-medium text-amber-200/90">
-                                Weight (g)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="text"
-                                  placeholder=""
-                                  className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
-                                  {...field}
-                                  onChange={(e) => {
-                                    field.onChange(e);
-                                    handleGoldSilverChange('metalWeight', e.target.value);
-                                  }}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="purity"
-                          render={({ field }) => (
-                            <FormItem className="space-y-2">
-                              <FormLabel className="text-sm font-medium text-amber-200/90">
-                                Purity (%)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="text"
-                                  placeholder=""
-                                  className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
-                                  {...field}
-                                  onChange={(e) => {
-                                    field.onChange(e);
-                                    handleGoldSilverChange('purity', e.target.value);
-                                  }}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="netWeight"
-                          render={({ field }) => (
-                            <FormItem className="space-y-2">
-                              <FormLabel className="text-sm font-medium text-amber-200/90">
-                                Net weight
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="text"
-                                  placeholder=""
-                                  className="h-9 text-sm bg-zinc-900/70 border-amber-500/30 text-white placeholder:text-zinc-400 cursor-not-allowed opacity-75 backdrop-blur-sm shadow-inner"
-                                  value={goldSilverValues.netWeight.toFixed(3)}
-                                  readOnly
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="mt-6 flex justify-center">
-                        <Button
-                          type="button"
-                          className="bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white px-3 py-1 rounded-lg text-xs font-medium shadow-lg border border-amber-400/50 backdrop-blur-sm"
-                          onClick={() => {
-                            setGoldItems([
-                              ...goldItems,
-                              {
-                                itemName: form.getValues('itemName'),
-                                metalWeight: form.getValues('metalWeight'),
-                                purity: form.getValues('purity'),
-                                netWeight: goldSilverValues.netWeight.toFixed(3),
-                                notes: form.getValues('goldSilverNotes'),
-                                pmType: 'gold',
-                              },
-                            ]);
-                            // Clear fields after adding
-                            form.setValue('itemName', '');
-                            form.setValue('metalWeight', '');
-                            form.setValue('purity', '');
-                            setGoldSilverValues({ metalWeight: '', purity: '', netWeight: 0 });
-                          }}
-                        >
-                          <Plus className="h-2.5 w-2.5 mr-0.5" />
-                          Add Item
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-gradient-to-br from-black via-zinc-900 to-neutral-900 border-2 border-slate-400/80 shadow-2xl w-full overflow-hidden relative backdrop-blur-xl">
-                    <div className="absolute inset-0 bg-white/10 backdrop-blur-xl pointer-events-none" />
-                    <CardHeader className="bg-gradient-to-r from-slate-900/40 via-slate-800/30 to-slate-800/40 text-white pb-2 backdrop-blur-sm border-b border-slate-500/30">
-                      <CardTitle className="text-base flex items-center gap-2 font-semibold -mt-1">
-                        <Layers className="h-6 w-6 text-slate-400" />
-                        Silver Details
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 bg-gradient-to-br from-zinc-900/60 via-neutral-900/50 to-black/60 backdrop-blur-xl">
-                      <div className="grid grid-cols-4 gap-6">
-                        <FormField
-                          control={form.control}
-                          name="silverItemName"
-                          render={({ field }) => (
-                            <FormItem className="space-y-2">
-                              <FormLabel className="text-sm font-medium text-slate-200/90">
-                                Item
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="text"
-                                  placeholder=""
-                                  className="h-9 text-sm bg-zinc-900/70 border-slate-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="silverMetalWeight"
-                          render={({ field }) => (
-                            <FormItem className="space-y-2">
-                              <FormLabel className="text-sm font-medium text-slate-200/90">
-                                Weight (g)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="text"
-                                  placeholder=""
-                                  className="h-9 text-sm bg-zinc-900/70 border-slate-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
-                                  {...field}
-                                  onChange={(e) => {
-                                    field.onChange(e);
-                                    handleGoldSilverChange('metalWeight', e.target.value);
-                                  }}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="silverPurity"
-                          render={({ field }) => (
-                            <FormItem className="space-y-2">
-                              <FormLabel className="text-sm font-medium text-slate-200/90">
-                                Purity (%)
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="text"
-                                  placeholder=""
-                                  className="h-9 text-sm bg-zinc-900/70 border-slate-500/30 text-white placeholder:text-zinc-400 backdrop-blur-sm shadow-inner"
-                                  {...field}
-                                  onChange={(e) => {
-                                    field.onChange(e);
-                                    handleGoldSilverChange('purity', e.target.value);
-                                  }}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="silverNetWeight"
-                          render={({ field }) => (
-                            <FormItem className="space-y-2">
-                              <FormLabel className="text-sm font-medium text-slate-200/90">
-                                Net weight
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="text"
-                                  placeholder=""
-                                  className="h-9 text-sm bg-zinc-900/70 border-slate-500/30 text-white placeholder:text-zinc-400 cursor-not-allowed opacity-75 backdrop-blur-sm shadow-inner"
-                                  value={goldSilverValues.netWeight.toFixed(3)}
-                                  readOnly
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="mt-6 flex justify-center">
-                        <Button
-                          type="button"
-                          className="bg-gradient-to-r from-slate-600 to-slate-500 hover:from-slate-500 hover:to-slate-400 text-white px-3 py-1 rounded-lg text-xs font-medium shadow-lg border border-slate-400/50 backdrop-blur-sm"
-                          onClick={() => {
-                            setGoldItems([
-                              ...goldItems,
-                              {
-                                itemName: form.getValues('silverItemName'),
-                                metalWeight: form.getValues('silverMetalWeight'),
-                                purity: form.getValues('silverPurity'),
-                                netWeight: goldSilverValues.netWeight.toFixed(3),
-                                notes: form.getValues('goldSilverNotes'),
-                                pmType: 'silver',
-                              },
-                            ]);
-                            // Clear fields after adding
-                            form.setValue('silverItemName', '');
-                            form.setValue('silverMetalWeight', '');
-                            form.setValue('silverPurity', '');
-                            setGoldSilverValues({ metalWeight: '', purity: '', netWeight: 0 });
-                          }}
-                        >
-                          <Plus className="h-2.5 w-2.5 mr-0.5" />
-                          Add Item
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="silverNetWeight"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-sm font-medium text-slate-200/90">
+                            Net weight
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              placeholder=""
+                              className="h-9 text-sm bg-zinc-900/70 border-slate-500/30 text-white placeholder:text-zinc-400 cursor-not-allowed opacity-75 backdrop-blur-sm shadow-inner"
+                              value={goldSilverValues.netWeight.toFixed(3)}
+                              readOnly
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="mt-6 flex justify-center">
+                    <Button
+                      type="button"
+                      className="bg-gradient-to-r from-slate-600 to-slate-500 hover:from-slate-500 hover:to-slate-400 text-white px-3 py-1 rounded-lg text-xs font-medium shadow-lg border border-slate-400/50 backdrop-blur-sm"
+                      onClick={() => {
+                        setGoldItems([
+                          ...goldItems,
+                          {
+                            itemName: form.getValues('silverItemName'),
+                            metalWeight: form.getValues('silverMetalWeight'),
+                            purity: form.getValues('silverPurity'),
+                            netWeight: goldSilverValues.netWeight.toFixed(3),
+                            notes: form.getValues('goldSilverNotes'),
+                            pmType: 'silver',
+                          },
+                        ]);
+                        // Clear fields after adding
+                        form.setValue('silverItemName', '');
+                        form.setValue('silverMetalWeight', '');
+                        form.setValue('silverPurity', '');
+                        setGoldSilverValues({ metalWeight: '', purity: '', netWeight: 0 });
+                      }}
+                    >
+                      <Plus className="h-2.5 w-2.5 mr-0.5" />
+                      Add Item
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="mt-6">
           <FormField
