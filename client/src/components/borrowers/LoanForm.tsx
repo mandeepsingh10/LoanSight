@@ -418,7 +418,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 bg-gradient-to-br from-zinc-900/60 via-neutral-900/50 to-black/60 backdrop-blur-xl">
-                  <div className="grid grid-cols-4 gap-6">
+                  <div className="grid grid-cols-4 gap-6 items-end">
                     <FormField
                       control={form.control}
                       name="itemName"
@@ -492,7 +492,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                       name="netWeight"
                       render={({ field }) => (
                         <FormItem className="space-y-2">
-                          <FormLabel className="text-sm font-medium text-amber-200/90">
+                          <FormLabel className="text-sm font-medium text-amber-200/90 whitespace-nowrap -ml-2">
                             Net weight (g)
                           </FormLabel>
                           <FormControl>
@@ -549,7 +549,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 bg-gradient-to-br from-zinc-900/60 via-neutral-900/50 to-black/60 backdrop-blur-xl">
-                  <div className="grid grid-cols-4 gap-6">
+                  <div className="grid grid-cols-4 gap-6 items-end">
                     <FormField
                       control={form.control}
                       name="silverItemName"
@@ -623,7 +623,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                       name="silverNetWeight"
                       render={({ field }) => (
                         <FormItem className="space-y-2">
-                          <FormLabel className="text-sm font-medium text-slate-200/90">
+                          <FormLabel className="text-sm font-medium text-slate-200/90 whitespace-nowrap -ml-2">
                             Net weight (g)
                           </FormLabel>
                           <FormControl>
