@@ -1647,12 +1647,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let paidDate = null;
       let paidAmount = null;
       
-      // If payment date is today or in the past, automatically mark as collected
-      if (isBefore(paymentDate, today) || paymentDate.getTime() === today.getTime()) {
-        status = PaymentStatus.COLLECTED;
-        paidDate = dueDate; // Use the user-selected payment date
-        paidAmount = amount;
-        console.log(`Auto-marking payment as collected: payment date ${dueDate} is today or in the past`);
+      // For gold loans, don't automatically mark backdated payments as collected
+      // Let the user manually collect them if needed
+      if (loan.loanStrategy === 'gold_silver') {
+        if (isBefore(paymentDate, today)) {
+          status = PaymentStatus.OVERDUE; // Mark as overdue instead of collected
+        } else if (paymentDate.getTime() === today.getTime()) {
+          status = PaymentStatus.DUE_SOON; // Mark as due soon for today's payments
+        }
+      } else {
+        // For other loan types, keep the existing logic
+        if (isBefore(paymentDate, today) || paymentDate.getTime() === today.getTime()) {
+          status = PaymentStatus.COLLECTED;
+          paidDate = dueDate; // Use the user-selected payment date
+          paidAmount = amount;
+          console.log(`Auto-marking payment as collected: payment date ${dueDate} is today or in the past`);
+        }
       }
 
       // Create the payment
