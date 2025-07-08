@@ -894,7 +894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Borrower not found' });
       }
       
-      // Create loan data with required fields to satisfy type requirements
+      // Create loan data with required fields
       const data = {
         borrowerId: rawData.borrowerId,
         amount: rawData.amount,
@@ -907,13 +907,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tenure: rawData.tenure,
         customEmiAmount: rawData.customEmiAmount,
         flatMonthlyAmount: rawData.flatMonthlyAmount,
-        pmType: rawData.pmType,
-        metalWeight: rawData.metalWeight,
-        purity: rawData.purity,
-        netWeight: rawData.netWeight,
-        amountPaid: rawData.amountPaid,
-        goldSilverNotes: rawData.goldSilverNotes,
       };
+      
+      // For gold/silver loans, validate that items array is present
+      if (data.loanStrategy === 'gold_silver') {
+        if (!Array.isArray(items) || items.length === 0) {
+          return res.status(400).json({ message: 'At least one item is required for gold/silver loans' });
+        }
+      }
       
       console.log('Creating loan with data:', data);
       
@@ -928,15 +929,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const created = await storage.createLoanItem({
             loanId: loan.id,
             itemName: item.itemName,
-            pmType: item.pmType,
-            metalWeight: item.metalWeight,
-            purity: item.purity,
-            netWeight: item.netWeight,
-            goldSilverNotes: item.goldSilverNotes || null,
+            pmType: item.pmType || 'gold', // Default to 'gold' if not specified
+            metalWeight: parseFloat(item.metalWeight),
+            purity: parseFloat(item.purity),
+            netWeight: parseFloat(item.netWeight),
+            goldSilverNotes: item.notes || null,
           });
           createdItems.push(created);
         }
       }
+      
       // Generate the payment schedule
       await generatePaymentSchedule(loan.id);
       

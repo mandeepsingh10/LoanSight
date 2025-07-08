@@ -58,14 +58,6 @@ export const loans = pgTable("loans", {
   // Fields for FLAT strategy
   flatMonthlyAmount: real("flat_monthly_amount"),
   
-  // Fields for GOLD_SILVER strategy
-  pmType: text("pm_type"), // "gold" or "silver"
-  metalWeight: real("metal_weight"), // in grams
-  purity: real("purity"), // percentage (e.g., 75 for 75%)
-  netWeight: real("net_weight"), // calculated field
-  amountPaid: real("amount_paid"),
-  goldSilverNotes: text("gold_silver_notes"),
-  
   // General loan notes
   notes: text("notes"),
   

@@ -527,6 +527,45 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
           </DialogHeader>
 
           <div className="mt-6">
+            {loan?.loanStrategy === "gold_silver" && (
+              <div className="mb-6">
+                <Card className="bg-gradient-to-br from-black via-zinc-900 to-neutral-900 border-2 border-amber-400/30 shadow-xl">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-medium text-white flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-amber-400" />
+                      Precious Metal Items
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto rounded-lg border border-amber-400/30 bg-black/40">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-amber-900/40 hover:bg-amber-900/60">
+                            <TableHead className="text-amber-200 w-1/5 text-center">Item</TableHead>
+                            <TableHead className="text-amber-200 w-1/5 text-center">Type</TableHead>
+                            <TableHead className="text-amber-200 w-1/5 text-center">Weight (g)</TableHead>
+                            <TableHead className="text-amber-200 w-1/5 text-center">Purity (%)</TableHead>
+                            <TableHead className="text-amber-200 w-1/5 text-center">Net Weight</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {loan.items?.map((item, idx) => (
+                            <TableRow key={idx} className="border-t border-amber-400/10 hover:bg-amber-900/20">
+                              <TableCell className="text-white text-center capitalize">{item.itemName.toLowerCase()}</TableCell>
+                              <TableCell className="text-white text-center capitalize">{item.pmType === 'gold' ? 'Gold' : 'Silver'}</TableCell>
+                              <TableCell className="text-white text-center">{item.metalWeight}</TableCell>
+                              <TableCell className="text-white text-center">{item.purity}</TableCell>
+                              <TableCell className="text-white text-center">{item.netWeight}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             {paymentsLoading ? (
               <div className="flex items-center justify-center h-32">
                 <p className="text-gray-500">Loading payments...</p>
