@@ -48,7 +48,8 @@ import {
   CreditCard,
   Pencil,
   X,
-  Save
+  Save,
+  History
 } from "lucide-react";
 import { Loan, Payment } from "@/types";
 
@@ -70,6 +71,10 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const [paymentNotes, setPaymentNotes] = useState("");
   const [upiId, setUpiId] = useState("");
   const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  // Payment history dialog state
+  const [historyDialog, setHistoryDialog] = useState(false);
+  const [selectedPaymentForHistory, setSelectedPaymentForHistory] = useState<Payment | null>(null);
 
   // Delete dialog state
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -110,6 +115,37 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       });
     },
     enabled: isOpen && !!loan,
+  });
+
+  // Fetch payment transactions for each payment
+  const { data: paymentTransactionsMap = {}, isLoading: transactionsLoading } = useQuery({
+    queryKey: ["/api/payments/transactions", "loan", loan?.id],
+    queryFn: async () => {
+      if (!loan || !payments.length) return {};
+      
+      const transactionsMap: { [paymentId: number]: any[] } = {};
+      
+      // Fetch transactions for each payment that has been paid
+      for (const payment of payments) {
+        if (payment.paidAmount && payment.paidAmount > 0) {
+          try {
+            const response = await apiRequest("GET", `/api/payments/${payment.id}/transactions`);
+            if (response.ok) {
+              const transactions = await response.json();
+              transactionsMap[payment.id] = transactions;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch transactions for payment ${payment.id}:`, error);
+            transactionsMap[payment.id] = [];
+          }
+        }
+      }
+      
+      return transactionsMap;
+    },
+    enabled: isOpen && !!loan && payments.length > 0,
+    refetchOnWindowFocus: false,
+    staleTime: 0, // Always refetch when payments change
   });
 
   // Add single payment mutation
@@ -178,24 +214,26 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
 
   // Collect payment mutation
   const collectPaymentMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const formattedData = {
-        status: "collected",
-        paidDate: data.paidDate || new Date().toISOString().split("T")[0],
-        paidAmount: parseFloat(data.paidAmount),
+    mutationFn: async (data: { id: number; paidAmount: string; paymentMethod: string; notes: string; upiId: string; paymentDate: string }) => {
+      const response = await apiRequest("POST", `/api/payments/${data.id}/collect`, {
+        paidAmount: data.paidAmount,
         paymentMethod: data.paymentMethod,
-        notes: data.notes || "",
-      };
-      
-      const response = await apiRequest("POST", `/api/payments/${data.paymentId}/collect`, formattedData);
+        notes: data.notes,
+        upiId: data.upiId,
+        paidDate: data.paymentDate,
+        status: "collected"
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to collect payment");
+      }
       return response.json();
     },
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Payment marked as collected.",
+        description: "Payment collected successfully",
       });
-      
       setCollectionDialog(false);
       setSelectedPayment(null);
       setPaymentAmount("");
@@ -203,13 +241,28 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       setPaymentNotes("");
       setUpiId("");
       setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
-      
+      // Invalidate and refetch queries to update the UI
       queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/transactions", "loan", loan?.id] });
     },
     onError: (error) => {
+      // Extract user-friendly error message
+      let errorMessage = "Failed to record payment collection. Please try again.";
+      
+      if (error instanceof Error) {
+        const errorText = error.message;
+        if (errorText.includes("Payment amount cannot exceed EMI amount")) {
+          errorMessage = "Payment amount cannot exceed the EMI amount.";
+        } else if (errorText.includes("Payment not found")) {
+          errorMessage = "Payment not found. Please refresh and try again.";
+        } else if (errorText.includes("Network")) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        }
+      }
+      
       toast({
         title: "Error",
-        description: `Failed to mark payment as collected: ${error}`,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -412,11 +465,12 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
     }
     
     collectPaymentMutation.mutate({
-      paymentId: selectedPayment.id,
+      id: selectedPayment.id,
       paidAmount: paidAmount,
-      paidDate: paymentDate,
       paymentMethod,
       notes: finalNotes,
+      upiId: upiId,
+      paymentDate: paymentDate,
     });
   };
 
@@ -437,6 +491,11 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const handleDeletePayment = (payment: Payment) => {
     setDeletePayment(payment);
     setDeleteDialog(true);
+  };
+
+  const handleViewHistory = (payment: Payment) => {
+    setSelectedPaymentForHistory(payment);
+    setHistoryDialog(true);
   };
 
   const confirmDeletePayment = () => {
@@ -556,9 +615,9 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                   <TableHeader>
                     <TableRow>
                       <TableHead>Due Date</TableHead>
-                      <TableHead>Amount</TableHead>
+                      <TableHead>EMI Amount</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Payment Details</TableHead>
+                      <TableHead>Paid Amount</TableHead>
                       <TableHead>Dues</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -581,7 +640,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                           </div>
                         </TableCell>
                         <TableCell>
-                          {payment.paidAmount ? (
+                          {payment.paidAmount && payment.paidAmount > 0 ? (
                             <div className="space-y-1">
                               <div className="text-sm font-medium">
                                 {formatCurrency(payment.paidAmount)}
@@ -589,16 +648,6 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                               <div className="text-xs text-gray-500">
                                 {format(new Date(payment.paidDate), "MMM d, yyyy")}
                               </div>
-                              {payment.paymentMethod && (
-                                <div className="text-xs text-gray-500 capitalize">
-                                  {payment.paymentMethod.replace('_', ' ')}
-                                </div>
-                              )}
-                              {payment.notes && (
-                                <div className="text-xs text-gray-700 whitespace-pre-line mt-1">
-                                  {payment.notes}
-                                </div>
-                              )}
                             </div>
                           ) : (
                             <span className="text-gray-500 text-sm">Not collected yet</span>
@@ -609,9 +658,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                             <div className="text-orange-600 font-medium">
                               {formatCurrency(payment.dueAmount)}
                             </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+                          ) : null}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -638,6 +685,15 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                                 <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
                               </Button>
                             )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleViewHistory(payment)}
+                              className="h-8 w-8 p-0 hover:!bg-black"
+                              title="View Payment History"
+                            >
+                              <History className="h-4 w-4 text-green-400 hover:text-green-300" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"
@@ -720,6 +776,81 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
               </CardContent>
             </Card>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment History Dialog */}
+      <Dialog open={historyDialog} onOpenChange={setHistoryDialog}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Payment History</DialogTitle>
+            <DialogDescription>
+              Complete payment history for EMI due on {selectedPaymentForHistory && format(new Date(selectedPaymentForHistory.dueDate), "MMMM d, yyyy")}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {selectedPaymentForHistory && (
+              <>
+                <div className={`grid grid-cols-2 gap-4 p-4 bg-gray-900 rounded-lg border-2 ${selectedPaymentForHistory.dueAmount && selectedPaymentForHistory.dueAmount > 0 ? 'border-red-500' : 'border-green-500'}`}>
+                  <div>
+                    <div className="text-sm text-gray-400">EMI Amount</div>
+                    <div className="text-lg font-semibold text-white">{formatCurrency(selectedPaymentForHistory.amount)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-400">Outstanding Dues</div>
+                    <div className="text-lg font-semibold text-orange-500">{formatCurrency(selectedPaymentForHistory.dueAmount || 0)}</div>
+                  </div>
+                </div>
+                
+                {paymentTransactionsMap[selectedPaymentForHistory.id] && paymentTransactionsMap[selectedPaymentForHistory.id].length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium text-gray-300">Payment Records</div>
+                    <div className="space-y-2">
+                      {paymentTransactionsMap[selectedPaymentForHistory.id].map((transaction: any) => (
+                        <div key={transaction.id} className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="text-sm font-medium text-white">
+                              {format(new Date(transaction.paidDate), "EEEE, MMMM d, yyyy")}
+                            </div>
+                            <div className="text-lg font-bold text-green-400">
+                              {formatCurrency(transaction.amount)}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-400">Payment Mode:</span>
+                              <span className="ml-2 text-white capitalize">
+                                {transaction.paymentMethod ? transaction.paymentMethod.replace('_', ' ') : 'Not specified'}
+                              </span>
+                            </div>
+                            {transaction.notes && (
+                              <div className="col-span-2">
+                                <span className="text-gray-400">Notes:</span>
+                                <span className="ml-2 text-white">{transaction.notes}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <History className="h-12 w-12 mx-auto mb-4 text-gray-600" />
+                    <div className="text-lg font-medium">No payment records found</div>
+                    <div className="text-sm">This EMI payment hasn't been collected yet.</div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -298,9 +298,23 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/upcoming-payments"] });
     },
     onError: (error) => {
+      // Extract user-friendly error message
+      let errorMessage = "Failed to record payment collection. Please try again.";
+      
+      if (error instanceof Error) {
+        const errorText = error.message;
+        if (errorText.includes("Payment amount cannot exceed EMI amount")) {
+          errorMessage = "Payment amount cannot exceed the EMI amount.";
+        } else if (errorText.includes("Payment not found")) {
+          errorMessage = "Payment not found. Please refresh and try again.";
+        } else if (errorText.includes("Failed to fetch")) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        }
+      }
+      
       toast({
         title: "Error",
-        description: `Failed to mark payment as collected: ${error}`,
+        description: errorMessage,
         variant: "destructive",
       });
     },

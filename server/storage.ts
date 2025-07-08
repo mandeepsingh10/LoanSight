@@ -2,7 +2,8 @@ import { borrowers, type Borrower, type InsertBorrower,
          loans, type Loan, type InsertLoan,
          payments, type Payment, type InsertPayment, type UpdatePayment,
          users, type User, type CreateUser, type UpdateUser,
-         PaymentStatus, UserRole, loanItems, type LoanItem } from "@shared/schema";
+         PaymentStatus, UserRole, loanItems, type LoanItem,
+         paymentTransactions, type PaymentTransaction, type InsertPaymentTransaction } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, lt, gte, desc, isNull, sql } from "drizzle-orm";
 import { subMonths } from "date-fns";
@@ -63,6 +64,11 @@ export interface IStorage {
   createLoanItem(item: Omit<LoanItem, "id">): Promise<LoanItem>;
   deleteLoanItemsByLoanId(loanId: number): Promise<void>;
   updateLoanItemsForLoan(loanId: number, items: Omit<LoanItem, "id" | "loanId">[]): Promise<LoanItem[]>;
+
+  // Payment transaction operations
+  getPaymentTransactionsByPaymentId(paymentId: number): Promise<PaymentTransaction[]>;
+  createPaymentTransaction(transaction: InsertPaymentTransaction): Promise<PaymentTransaction>;
+  deletePaymentTransaction(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -385,21 +391,50 @@ export class DatabaseStorage implements IStorage {
     
     if (data.paidAmount !== undefined) {
       // Convert string amounts to numbers
-      const paidAmount = typeof data.paidAmount === 'string' 
+      const newPaidAmount = typeof data.paidAmount === 'string' 
         ? parseFloat(data.paidAmount) 
         : data.paidAmount;
-      
-      updateData.paidAmount = paidAmount;
-      
-      // Calculate due amount (outstanding balance)
+      // Accumulate with previous paidAmount
+      const previousPaidAmount = currentPayment.paidAmount || 0;
+      const totalPaidAmount = previousPaidAmount + newPaidAmount;
+      // Validate that total paid amount doesn't exceed the original EMI amount
       const originalAmount = currentPayment.amount;
-      const dueAmount = Math.max(0, originalAmount - paidAmount);
+      if (totalPaidAmount > originalAmount) {
+        throw new Error(`Payment amount cannot exceed EMI amount. EMI: ${originalAmount}, Already paid: ${previousPaidAmount}, New payment: ${newPaidAmount}, Total would be: ${totalPaidAmount}`);
+      }
+      updateData.paidAmount = totalPaidAmount;
+      // Calculate due amount (outstanding balance)
+      const dueAmount = Math.max(0, originalAmount - totalPaidAmount);
       updateData.dueAmount = dueAmount;
-      
       // If there's still a due amount, keep status as "due_soon" instead of "collected"
       if (dueAmount > 0) {
         updateData.status = PaymentStatus.DUE_SOON;
       }
+      
+      // Create a payment transaction record for this payment
+      await this.createPaymentTransaction({
+        paymentId: id,
+        amount: newPaidAmount,
+        paidDate: data.paidDate || new Date().toISOString().split('T')[0],
+        paymentMethod: data.paymentMethod,
+        notes: data.notes
+      });
+    } else if (data.status === "collected" && !currentPayment.paidAmount) {
+      // If payment is being marked as collected for the first time and no paidAmount provided,
+      // treat it as a full payment and create a transaction record
+      const originalAmount = currentPayment.amount;
+      updateData.paidAmount = originalAmount;
+      updateData.dueAmount = 0;
+      updateData.paidDate = data.paidDate || new Date().toISOString().split('T')[0];
+      
+      // Create a payment transaction record for the full payment
+      await this.createPaymentTransaction({
+        paymentId: id,
+        amount: originalAmount,
+        paidDate: data.paidDate || new Date().toISOString().split('T')[0],
+        paymentMethod: data.paymentMethod,
+        notes: data.notes
+      });
     }
     
     if (data.paymentMethod !== undefined) {
@@ -411,7 +446,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     // Log what we're updating for debugging
-    console.log("Marking payment collected:", { id, updateData });
+    console.log("Marking payment collected (accumulating):", { id, updateData });
     
     const result = await db.update(payments)
       .set(updateData)
@@ -744,6 +779,23 @@ export class DatabaseStorage implements IStorage {
       createdItems.push(created);
     }
     return createdItems;
+  }
+
+  // Payment transaction operations
+  async getPaymentTransactionsByPaymentId(paymentId: number): Promise<PaymentTransaction[]> {
+    return await db.select().from(paymentTransactions)
+      .where(eq(paymentTransactions.paymentId, paymentId))
+      .orderBy(desc(paymentTransactions.paidDate));
+  }
+
+  async createPaymentTransaction(transaction: InsertPaymentTransaction): Promise<PaymentTransaction> {
+    const [created] = await db.insert(paymentTransactions).values(transaction).returning();
+    return created;
+  }
+
+  async deletePaymentTransaction(id: number): Promise<boolean> {
+    const result = await db.delete(paymentTransactions).where(eq(paymentTransactions.id, id)).returning();
+    return result.length > 0;
   }
 }
 

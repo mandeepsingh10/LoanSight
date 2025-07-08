@@ -24,7 +24,7 @@ import {
   insertPaymentSchema, updatePaymentSchema, 
   createUserSchema, updateUserSchema, changePasswordSchema, resetPasswordSchema, loginSchema,
   PaymentStatus, LoanStrategy, UserRole,
-  borrowers, loans, payments, users, loanItems
+  borrowers, loans, payments, users, loanItems, paymentTransactions
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -1147,6 +1147,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/payments/:id/transactions', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const transactions = await storage.getPaymentTransactionsByPaymentId(id);
+      res.json(transactions);
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   app.post('/api/payments/:id/collect', requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1281,6 +1291,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payments = await storage.getPayments();
       // Fetch all loan items
       const allLoanItems = await db.select().from(loanItems);
+      // Fetch all payment transactions
+      const allPaymentTransactions = await db.select().from(paymentTransactions);
       
       // Get photos from uploads directory and embed them in backup
       const photosDir = path.join(__dirname, '../uploads/photos');
@@ -1357,7 +1369,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           borrowers,
           loans,
           payments,
-          loanItems: allLoanItems // Add loanItems to backup data
+          loanItems: allLoanItems, // Add loanItems to backup data
+          paymentTransactions: allPaymentTransactions // Add payment transactions to backup data
         },
         photos
       };
@@ -1520,10 +1533,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Restoring payments...');
       // Restore payments using the mapped loan IDs
+      const paymentIdMapping = new Map();
       for (const payment of data.payments) {
         const newLoanId = loanIdMapping.get(payment.loanId);
         if (newLoanId) {
-          await storage.createPayment({
+          const [newPayment] = await db.insert(payments).values({
             loanId: newLoanId,
             dueDate: payment.dueDate,
             amount: payment.amount,
@@ -1533,7 +1547,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             dueAmount: payment.dueAmount,
             paymentMethod: payment.paymentMethod,
             notes: payment.notes
-          });
+          }).returning();
+          paymentIdMapping.set(payment.id, newPayment.id);
         }
       }
       
@@ -1554,6 +1569,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
               purity: item.purity,
               netWeight: item.netWeight,
               goldSilverNotes: item.goldSilverNotes
+            });
+          }
+        }
+      }
+      
+      console.log('Restoring payment transactions...');
+      // Restore payment transactions
+      if (data.paymentTransactions && Array.isArray(data.paymentTransactions)) {
+        // Clear existing payment transactions
+        await db.delete(paymentTransactions);
+        // Map old payment IDs to new ones
+        for (const transaction of data.paymentTransactions) {
+          const newPaymentId = paymentIdMapping.get(transaction.paymentId);
+          if (newPaymentId) {
+            await db.insert(paymentTransactions).values({
+              paymentId: newPaymentId,
+              amount: transaction.amount,
+              paidDate: transaction.paidDate,
+              paymentMethod: transaction.paymentMethod,
+              notes: transaction.notes
             });
           }
         }
