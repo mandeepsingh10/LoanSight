@@ -24,7 +24,7 @@ import {
   insertPaymentSchema, updatePaymentSchema, 
   createUserSchema, updateUserSchema, changePasswordSchema, resetPasswordSchema, loginSchema,
   PaymentStatus, LoanStrategy, UserRole,
-  borrowers, loans, payments, users
+  borrowers, loans, payments, users, loanItems
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -1279,6 +1279,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const borrowers = await storage.getBorrowers();
       const loans = await storage.getLoans();
       const payments = await storage.getPayments();
+      // Fetch all loan items
+      const allLoanItems = await db.select().from(loanItems);
       
       // Get photos from uploads directory and embed them in backup
       const photosDir = path.join(__dirname, '../uploads/photos');
@@ -1354,8 +1356,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: {
           borrowers,
           loans,
-          payments
-          // users excluded for security
+          payments,
+          loanItems: allLoanItems // Add loanItems to backup data
         },
         photos
       };
@@ -1532,6 +1534,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paymentMethod: payment.paymentMethod,
             notes: payment.notes
           });
+        }
+      }
+      
+      console.log('Restoring loan items...');
+      // Restore loan items
+      if (data.loanItems && Array.isArray(data.loanItems)) {
+        // Clear existing loan items
+        await db.delete(loanItems);
+        // Map old loan IDs to new ones
+        for (const item of data.loanItems) {
+          const newLoanId = loanIdMapping.get(item.loanId);
+          if (newLoanId) {
+            await db.insert(loanItems).values({
+              loanId: newLoanId,
+              itemName: item.itemName,
+              pmType: item.pmType,
+              metalWeight: item.metalWeight,
+              purity: item.purity,
+              netWeight: item.netWeight,
+              goldSilverNotes: item.goldSilverNotes
+            });
+          }
         }
       }
       
