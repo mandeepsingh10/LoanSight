@@ -1866,6 +1866,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/payments/:id/reset', requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const resetPayment = await storage.resetPayment(id);
+      if (!resetPayment) {
+        return res.status(404).json({ message: 'Payment not found' });
+      }
+      res.json(resetPayment);
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   const httpServer = createServer(app);
 
 

@@ -80,6 +80,9 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   // Delete dialog state
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deletePayment, setDeletePayment] = useState<Payment | null>(null);
+  const [resetDialog, setResetDialog] = useState(false);
+  const [resetPayment, setResetPayment] = useState<Payment | null>(null);
+  const [resetConfirmation, setResetConfirmation] = useState("");
 
   // Add payment dialogs state
   const [showAddSinglePayment, setShowAddSinglePayment] = useState(false);
@@ -313,6 +316,40 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       toast({
         title: "Delete Failed", 
         description: "Could not delete payment. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reset payment mutation
+  const resetPaymentMutation = useMutation({
+    mutationFn: async (paymentId: number) => {
+      const response = await apiRequest("POST", `/api/payments/${paymentId}/reset`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to reset payment");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Payment Reset",
+        description: "Payment has been successfully reset to its original state.",
+      });
+      
+      // Close the reset dialog and reset state
+      setResetDialog(false);
+      setResetPayment(null);
+      setResetConfirmation("");
+      
+      // Invalidate and refetch queries to update the UI
+      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/transactions", "loan", loan?.id] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Reset Failed",
+        description: error.message || "Could not reset payment. Please try again.",
         variant: "destructive",
       });
     },
@@ -573,13 +610,11 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const isPartialCollection = !!selectedPayment && selectedPayment.paidAmount > 0 && selectedPayment.dueAmount > 0;
   const isFullyCollected = !!selectedPayment && selectedPayment.paidAmount > 0 && selectedPayment.dueAmount === 0;
 
-  // Handler for resetting a payment (UI only, backend logic can be added as needed)
+  // Handler for resetting a payment
   const handleResetPayment = (payment: Payment) => {
-    // TODO: Implement backend reset logic
-    toast({
-      title: "Reset Payment",
-      description: `Reset requested for payment due on ${format(new Date(payment.dueDate), "MMM d, yyyy")}`,
-    });
+    setResetPayment(payment);
+    setResetConfirmation("");
+    setResetDialog(true);
   };
 
   const handleEditTransaction = (transaction: any) => {
@@ -767,7 +802,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                           )}
                         </TableCell>
                         <TableCell>
-                          {payment.dueAmount > 0 ? (
+                          {payment.dueAmount > 0 && payment.paidAmount > 0 ? (
                             <div className="text-orange-600 font-medium">
                               {formatCurrency(payment.dueAmount)}
                             </div>
@@ -1397,6 +1432,66 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
               variant="destructive"
             >
               {deletePaymentMutation.isPending ? "Deleting..." : "Delete Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Payment Confirmation Dialog */}
+      <Dialog open={resetDialog} onOpenChange={(open) => {
+        setResetDialog(open);
+        if (!open) {
+          setResetConfirmation("");
+          setResetPayment(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-yellow-600">Reset Payment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reset this payment to its original state? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-300">
+              <p>This action will delete all payment history for this payment.</p>
+            </div>
+            <div>
+              <Label htmlFor="reset-confirmation" className="text-gray-300 font-medium text-sm">
+                Type "reset" to confirm:
+              </Label>
+              <Input
+                id="reset-confirmation"
+                type="text"
+                value={resetConfirmation}
+                onChange={(e) => setResetConfirmation(e.target.value)}
+                className="mt-1 bg-black border-gray-600 text-white focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={() => {
+                if (resetConfirmation === "reset") {
+                  if (resetPayment) {
+                    resetPaymentMutation.mutate(resetPayment.id);
+                  }
+                } else {
+                  toast({
+                    title: "Invalid Confirmation",
+                    description: 'Please type "reset" exactly to confirm this action.',
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={resetPaymentMutation.isPending || resetConfirmation !== "reset"}
+              variant="destructive"
+            >
+              {resetPaymentMutation.isPending ? "Resetting..." : "Confirm Reset"}
             </Button>
           </DialogFooter>
         </DialogContent>

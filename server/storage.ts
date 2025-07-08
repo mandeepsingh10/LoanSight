@@ -70,6 +70,7 @@ export interface IStorage {
   createPaymentTransaction(transaction: InsertPaymentTransaction): Promise<PaymentTransaction>;
   deletePaymentTransaction(id: number): Promise<boolean>;
   updatePaymentTransaction(id: number, data: Partial<PaymentTransaction>): Promise<PaymentTransaction | undefined>;
+  resetPayment(id: number): Promise<Payment | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -862,6 +863,30 @@ export class DatabaseStorage implements IStorage {
         .where(eq(payments.id, paymentId));
     }
     return updated;
+  }
+
+  async resetPayment(id: number): Promise<Payment | undefined> {
+    // Get the payment to verify it exists
+    const payment = await db.select().from(payments).where(eq(payments.id, id));
+    if (!payment.length) return undefined;
+    
+    // Delete all payment transactions for this payment
+    await db.delete(paymentTransactions).where(eq(paymentTransactions.paymentId, id));
+    
+    // Reset the payment to its original state
+    const result = await db.update(payments)
+      .set({
+        paidAmount: 0,
+        dueAmount: payment[0].amount, // Reset to original amount
+        status: 'upcoming',
+        paidDate: null,
+        paymentMethod: null,
+        notes: null
+      })
+      .where(eq(payments.id, id))
+      .returning();
+    
+    return result.length > 0 ? result[0] : undefined;
   }
 }
 
