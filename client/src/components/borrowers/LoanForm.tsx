@@ -493,7 +493,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                       render={({ field }) => (
                         <FormItem className="space-y-2">
                           <FormLabel className="text-sm font-medium text-amber-200/90">
-                            Net weight
+                            Net weight (g)
                           </FormLabel>
                           <FormControl>
                             <Input
@@ -624,7 +624,7 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
                       render={({ field }) => (
                         <FormItem className="space-y-2">
                           <FormLabel className="text-sm font-medium text-slate-200/90">
-                            Net weight
+                            Net weight (g)
                           </FormLabel>
                           <FormControl>
                             <Input
@@ -697,25 +697,23 @@ const LoanForm = ({ borrowerId, onSubmit, onCancel, isSubmitting, isNewBorrower 
         {goldItems.length > 0 && (
           <div className="mt-8">
             <h5 className="text-white font-semibold mb-2">Added Items</h5>
-            <div className="overflow-x-auto rounded-lg border border-amber-400/30 bg-black/40">
+            <div className="overflow-x-auto rounded-lg border border-gray-700 bg-black">
               <table className="min-w-full text-sm text-white">
-                <thead>
-                  <tr className="bg-amber-900/40">
-                    <th className="px-4 py-2 text-left">Item</th>
-                    <th className="px-4 py-2 text-left">Weight (g)</th>
-                    <th className="px-4 py-2 text-left">Purity (%)</th>
-                    <th className="px-4 py-2 text-left">Net Weight</th>
-                    <th className="px-4 py-2 text-left">Notes</th>
+                <thead className="bg-gray-900">
+                  <tr>
+                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-left">Item</th>
+                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Weight (g)</th>
+                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Purity (%)</th>
+                    <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Net Weight (g)</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-700">
                   {goldItems.map((item, idx) => (
-                    <tr key={idx} className="border-t border-amber-400/10">
-                      <td className="px-4 py-2">{item.itemName}</td>
-                      <td className="px-4 py-2">{item.metalWeight}</td>
-                      <td className="px-4 py-2">{item.purity}</td>
-                      <td className="px-4 py-2">{item.netWeight}</td>
-                      <td className="px-4 py-2">{item.notes}</td>
+                    <tr key={idx} className="hover:bg-[#111111]">
+                      <td className="px-6 py-4 whitespace-nowrap text-left">{item.itemName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">{item.metalWeight}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">{item.purity}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">{item.netWeight}</td>
                     </tr>
                   ))}
                 </tbody>

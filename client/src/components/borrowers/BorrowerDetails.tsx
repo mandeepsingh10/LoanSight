@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { CheckCircle, AlertCircle, Clock, Check, ChevronDown, Edit, Trash2, Save, X, Upload, Camera, Eye, MoreVertical, ArrowLeft, User, Pencil } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, Check, ChevronDown, Edit, Trash2, Save, X, Upload, Camera, Eye, MoreVertical, ArrowLeft, User, Pencil, Shield, BarChart2, StickyNote, BookOpen } from "lucide-react";
 import { Payment } from "@/types";
 import {
   Card,
@@ -846,7 +846,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                   <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-lg">Personal Information</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <User className="text-blue-400" size={20} />
+                      Personal Information
+                    </CardTitle>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -979,7 +982,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
 
                 <Card>
                   <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-lg">Guarantor Details</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Shield className="text-green-500" size={20} />
+                      Guarantor Details
+                    </CardTitle>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1073,7 +1079,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                 
                 <Card>
                   <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-lg">Borrower Summary</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <BarChart2 className="text-yellow-400" size={20} />
+                      Borrower Summary
+                    </CardTitle>
                     <Button
                       size="sm"
                       onClick={handleAddLoan}
@@ -1162,7 +1171,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
               {/* Notes Card */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-lg font-bold text-white">Notes</CardTitle>
+                  <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                    <StickyNote className="text-pink-400" size={20} />
+                    Notes
+                  </CardTitle>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1223,6 +1235,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
               <Separator />
               
               {/* Loan History */}
+              <div className="flex items-center gap-2 mt-8 mb-2">
+                <BookOpen className="text-purple-400" size={20} />
+                <span className="text-lg font-bold text-white">Loan History</span>
+              </div>
               <LoanHistory 
                 borrowerId={borrowerId}
                 onAddLoan={handleAddLoan}
@@ -1321,7 +1337,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                      <CardTitle className="text-lg">Personal Information</CardTitle>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <User className="text-blue-400" size={20} />
+                        Personal Information
+                      </CardTitle>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -1454,7 +1473,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
 
                   <Card>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                      <CardTitle className="text-lg">Guarantor Details</CardTitle>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Shield className="text-green-500" size={20} />
+                        Guarantor Details
+                      </CardTitle>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -1548,7 +1570,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                   
                   <Card>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                      <CardTitle className="text-lg">Borrower Summary</CardTitle>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <BarChart2 className="text-yellow-400" size={20} />
+                        Borrower Summary
+                      </CardTitle>
                       {loans && loans.length > 0 && (
                         <Button
                           size="sm"
@@ -1639,7 +1664,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                 {/* Notes Card */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-lg font-bold text-white">Notes</CardTitle>
+                    <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                      <StickyNote className="text-pink-400" size={20} />
+                      Notes
+                    </CardTitle>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1700,6 +1728,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                 <Separator />
                 
                 {/* Loan History */}
+                <div className="flex items-center gap-2 mt-8 mb-2">
+                  <BookOpen className="text-purple-400" size={20} />
+                  <span className="text-lg font-bold text-white">Loan History</span>
+                </div>
                 <LoanHistory 
                   borrowerId={borrowerId}
                   onAddLoan={handleAddLoan}
