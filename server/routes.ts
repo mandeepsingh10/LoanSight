@@ -1349,10 +1349,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const backupData = {
         metadata: {
           exportDate: new Date().toISOString(),
-          version: '2.0',
+          version: '2.1',
           totalBorrowers: borrowers.length,
           totalLoans: loans.length,
           totalPayments: payments.length,
+          totalLoanItems: allLoanItems.length,
+          totalPaymentTransactions: allPaymentTransactions.length,
           totalUsers: 0, // Users are not backed up for security
           totalPhotos: Object.keys(photos).length,
           totalPhotoSize: Object.values(photos).reduce((sum, photo) => sum + (photo.size || 0), 0),
@@ -1362,6 +1364,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             multipleLoanStrategies: true,
             customPayments: true,
             notesSupport: true,
+            paymentTransactions: true,
+            loanItems: true,
+            paymentValidation: true,
+            resetPaymentFunctionality: true,
+            dueAmountTracking: true,
+            paymentStatusLogic: true,
             userManagement: false // Users are not included in backup
           }
         },
@@ -1399,7 +1407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Clear existing data using TRUNCATE CASCADE for complete cleanup
       // Note: Users table is not cleared to preserve admin access
-      await db.execute(sql.raw('TRUNCATE TABLE payments, loans, borrowers RESTART IDENTITY CASCADE'));
+      await db.execute(sql.raw('TRUNCATE TABLE payment_transactions, loan_items, payments, loans, borrowers RESTART IDENTITY CASCADE'));
       console.log('Tables cleared successfully (users preserved)');
       
       // Restore photos if they exist
@@ -1601,6 +1609,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           borrowers: data.borrowers.length,
           loans: data.loans.length,
           payments: data.payments.length,
+          loanItems: data.loanItems ? data.loanItems.length : 0,
+          paymentTransactions: data.paymentTransactions ? data.paymentTransactions.length : 0,
           users: 0, // Users are not restored for security
           photos: photos ? Object.keys(photos).length : 0,
           photoSize: photos ? Object.values(photos).reduce((sum, photo) => sum + (typeof photo === 'string' ? 0 : (photo.size || 0)), 0) : 0
@@ -1810,12 +1820,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Starting database cleanup - deleting all data...');
       
       // Delete all data using TRUNCATE CASCADE for complete cleanup and reset sequences
-      await db.execute(sql.raw('TRUNCATE TABLE payments, loans, borrowers RESTART IDENTITY CASCADE'));
+      await db.execute(sql.raw('TRUNCATE TABLE payment_transactions, loan_items, payments, loans, borrowers RESTART IDENTITY CASCADE'));
       console.log('All tables cleared and ID sequences reset successfully');
       
       res.status(200).json({ 
         message: 'Database cleaned successfully',
-        deletedTables: ['payments', 'loans', 'borrowers'],
+        deletedTables: ['payment_transactions', 'loan_items', 'payments', 'loans', 'borrowers'],
         sequencesReset: true
       });
     } catch (error) {
