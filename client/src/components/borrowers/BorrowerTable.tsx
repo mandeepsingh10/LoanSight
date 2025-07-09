@@ -21,6 +21,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { Borrower, Loan } from "@/types";
 import BorrowerDetails from "./BorrowerDetails";
 import { LoanDetailsModal } from "./LoanDetailsModal";
+import { format } from "date-fns";
 
 interface BorrowerTableProps {
   borrowers: Borrower[];
@@ -145,19 +146,48 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
     );
     
     let consecutiveMissed = 0;
-    
+    let maxConsecutive = 0;
+
     sortedPayments.forEach((payment) => {
       const dueDate = new Date(payment.dueDate);
       const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (payment.status === 'collected') {
+
+      if (payment.status === 'collected' || daysOverdue <= 0) {
+        // Break the streak
         consecutiveMissed = 0;
-      } else if (daysOverdue > 0) {
+      } else {
         consecutiveMissed++;
+        if (consecutiveMissed > maxConsecutive) {
+          maxConsecutive = consecutiveMissed;
+        }
       }
     });
-    
-    return consecutiveMissed >= 2;
+
+    return maxConsecutive >= 2;
+  };
+
+  // Determine if a specific loan is part of a defaulter streak (>=2 consecutive missed payments)
+  const isLoanDefaulter = (loanId: number) => {
+    if (!Array.isArray(payments)) return false;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const loanPayments = payments.filter((p: any)=> p.loanId === loanId);
+    if (loanPayments.length === 0) return false;
+
+    const sorted = loanPayments.sort((a:any,b:any)=> new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    let streak=0, maxStreak=0;
+    sorted.forEach(p=>{
+      const dueDate=new Date(p.dueDate);
+      const overdue = (today.getTime()-dueDate.getTime())/(1000*60*60*24) >0;
+      if(p.status==='collected' || !overdue){
+        streak=0;
+      }else{
+        streak++;
+        if(streak>maxStreak) maxStreak=streak;
+      }
+    });
+    return maxStreak>=2;
   };
 
   const deleteMutation = useMutation({
@@ -320,13 +350,13 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                   Loan Amount
                 </th>
                 <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
+                  Start Date
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Loan Type
                 </th>
                 <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
-                  EMI Amount
-                </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
-                  Next Payment
+                  Tenure
                 </th>
                 <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Status
@@ -428,7 +458,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white mr-3 ${
-                                isDefaulter(borrower.id) ? 'bg-red-600' : 'bg-blue-600'
+                                isLoanDefaulter(loan.id) ? 'bg-red-600' : 'bg-blue-600'
                               }`}>
                                 <span>{borrower.name ? borrower.name.charAt(0).toUpperCase() : '?'}</span>
                               </div>
@@ -462,25 +492,19 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                               {formatCurrency(loan.amount)}
                             </div>
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center text-white">
+                            {loan.startDate ? format(new Date(loan.startDate), "dd MMM yyyy") : "-"}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <span className="font-medium text-white">
                               {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <span className="font-medium text-white">
-                              {loan.loanStrategy === 'custom' || loan.loanStrategy === 'gold_silver'
-                                ? 'NA'
-                                : loan.loanStrategy === 'emi' 
-                                  ? formatCurrency(loan.customEmiAmount || 0)
-                                  : formatCurrency(loan.flatMonthlyAmount || 0)}
-                            </span>
-                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center text-white">
-                            {loan.nextPayment || "-"}
+                            {loan.tenure ? `${loan.tenure} months` : "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <StatusBadge status={loan.status} className="mx-auto" />
+                            <StatusBadge status={isLoanDefaulter(loan.id) ? 'defaulted' : loan.status} className="mx-auto" />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <div className="flex items-center justify-center space-x-3">
@@ -499,7 +523,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
-                                  onClick={() => setConfirmDelete(borrower.id)}
+                                  onClick={() => setConfirmDeleteLoan({ borrowerId: borrower.id, loanId: loan.id })}
                                 >
                                   <Trash2 size={16} className="text-red-500 hover:text-red-400" />
                                 </Button>
@@ -647,25 +671,19 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                                 {formatCurrency(loan.amount)}
                               </div>
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-white">
+                              {loan.startDate ? format(new Date(loan.startDate), "dd MMM yyyy") : "-"}
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white">
                                 {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="font-medium text-white">
-                                {loan.loanStrategy === 'custom' || loan.loanStrategy === 'gold_silver'
-                                  ? 'NA'
-                                  : loan.loanStrategy === 'emi' 
-                                    ? formatCurrency(loan.customEmiAmount || 0)
-                                    : formatCurrency(loan.flatMonthlyAmount || 0)}
-                              </span>
-                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center text-white">
-                              {loan.nextPayment || "-"}
+                              {loan.tenure ? `${loan.tenure} months` : "-"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <StatusBadge status={loan.status} className="mx-auto" />
+                              <StatusBadge status={isLoanDefaulter(loan.id) ? 'defaulted' : loan.status} className="mx-auto" />
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="flex items-center justify-center space-x-3">
@@ -724,25 +742,19 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                                 {formatCurrency(loan.amount)}
                               </div>
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center text-white">
+                              {loan.startDate ? format(new Date(loan.startDate), "dd MMM yyyy") : "-"}
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white">
                                 {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="font-medium text-white">
-                                {loan.loanStrategy === 'custom' || loan.loanStrategy === 'gold_silver'
-                                  ? 'NA'
-                                  : loan.loanStrategy === 'emi' 
-                                    ? formatCurrency(loan.customEmiAmount || 0)
-                                    : formatCurrency(loan.flatMonthlyAmount || 0)}
-                              </span>
-                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center text-white">
-                              {loan.nextPayment || "-"}
+                              {loan.tenure ? `${loan.tenure} months` : "-"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <StatusBadge status={loan.status} className="mx-auto" />
+                              <StatusBadge status={isLoanDefaulter(loan.id) ? 'defaulted' : loan.status} className="mx-auto" />
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="flex items-center justify-center space-x-3">

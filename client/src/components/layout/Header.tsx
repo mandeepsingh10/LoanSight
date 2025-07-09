@@ -112,8 +112,8 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                     </div>
                   );
                 default:
-                  // Check if it's an edit borrower route
-                  if (location.startsWith('/edit-borrower/')) {
+                  // Check if it's an edit borrower or borrower details route
+                  if (location.startsWith('/edit-borrower/') || location.startsWith('/borrower-details/')) {
                     return (
                       <div className="flex items-center w-full">
                         <Button

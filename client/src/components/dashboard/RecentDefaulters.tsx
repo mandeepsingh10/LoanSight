@@ -1,17 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, User } from "lucide-react";
-import { BorrowerDetails } from "@/components/borrowers/BorrowerDetails";
-import { useState } from "react";
 import { formatDate } from "@/lib/date-utils";
 import { formatCurrency } from "@/lib/utils";
 
 const RecentDefaulters = () => {
-  const [selectedBorrower, setSelectedBorrower] = useState<number | null>(null);
+  const [, navigate] = useLocation();
 
   const { data: payments = [], isLoading: paymentsLoading } = useQuery({
     queryKey: ["/api/payments"],
@@ -82,6 +80,10 @@ const RecentDefaulters = () => {
   };
 
   const defaulters = processDefaulters();
+
+  const handleViewDetails = (borrowerId: number) => {
+    navigate(`/borrower-details/${borrowerId}`);
+  };
 
   if (isLoading) {
     return (
@@ -170,7 +172,7 @@ const RecentDefaulters = () => {
                       <Button 
                         variant="link" 
                         className="text-blue-400 hover:text-blue-300 text-sm font-medium h-auto p-0"
-                        onClick={() => setSelectedBorrower(defaulter.borrowerId)}
+                        onClick={() => handleViewDetails(defaulter.borrowerId)}
                       >
                         View Details
                       </Button>
@@ -190,15 +192,6 @@ const RecentDefaulters = () => {
           )}
         </div>
       </CardContent>
-      
-      {selectedBorrower && (
-        <BorrowerDetails
-          borrowerId={selectedBorrower}
-          isOpen={!!selectedBorrower}
-          onClose={() => setSelectedBorrower(null)}
-          fullScreen={true}
-        />
-      )}
     </Card>
   );
 };

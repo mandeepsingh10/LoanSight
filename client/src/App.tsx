@@ -10,6 +10,7 @@ import Header from "./components/layout/Header";
 import Dashboard from "./pages/dashboard";
 import Borrowers from "./pages/borrowers";
 import EditBorrower from "./pages/edit-borrower";
+import BorrowerDetails from "./pages/borrower-details";
 import Payments from "./pages/payments";
 import DefaultersNew from "./pages/defaulters-new";
 import Reports from "./pages/reports";
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/borrowers" component={Borrowers} />
       <Route path="/edit-borrower/:id" component={EditBorrower} />
+      <Route path="/borrower-details/:id" component={BorrowerDetails} />
       <Route path="/payments" component={Payments} />
       <Route path="/defaulters" component={DefaultersNew} />
       <Route path="/reports" component={Reports} />

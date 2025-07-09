@@ -15,9 +15,11 @@ interface DefaulterDisplay {
   guarantorName: string;
   guarantorPhone: string;
   guarantorAddress: string;
-  amount: number;
-  dueDate: string;
-  daysOverdue: number;
+  latestAmount: number;
+  latestDueDate: string;
+  latestDaysOverdue: number;
+  consecutiveMissed: number;
+  totalOutstanding: number;
 }
 
 export default function Defaulters() {
@@ -72,9 +74,14 @@ export default function Defaulters() {
     
     Object.entries(borrowerPayments).forEach(([borrowerId, payments]) => {
       if (payments.length >= 2) {
-        const latestPayment = payments.sort((a, b) => b.daysOverdue - a.daysOverdue)[0];
+        // Sort by days overdue descending
+        const sorted = payments.sort((a, b) => b.daysOverdue - a.daysOverdue);
+        const latestPayment = sorted[0];
         const borrower = latestPayment.borrower;
-        
+
+        // Calculate total outstanding
+        const totalOutstanding = payments.reduce((sum, p) => sum + p.amount, 0);
+
         defaulters.push({
           borrowerId: parseInt(borrowerId),
           borrowerName: borrower.name,
@@ -83,14 +90,16 @@ export default function Defaulters() {
           guarantorName: borrower.guarantorName || 'N/A',
           guarantorPhone: borrower.guarantorPhone || 'N/A',
           guarantorAddress: borrower.guarantorAddress || 'N/A',
-          amount: latestPayment.amount,
-          dueDate: latestPayment.dueDate,
-          daysOverdue: latestPayment.daysOverdue
+          latestAmount: latestPayment.amount,
+          latestDueDate: latestPayment.dueDate,
+          latestDaysOverdue: latestPayment.daysOverdue,
+          consecutiveMissed: payments.length,
+          totalOutstanding
         });
       }
     });
     
-    return defaulters.sort((a, b) => b.daysOverdue - a.daysOverdue);
+    return defaulters.sort((a, b) => b.latestDaysOverdue - a.latestDaysOverdue);
   };
 
   const defaulters = getDefaulters();
@@ -139,13 +148,18 @@ export default function Defaulters() {
                       </div>
                       <div className="text-right">
                         <Badge variant="destructive" className="mb-2">
-                          {defaulter.daysOverdue} days overdue
+                          {defaulter.latestDaysOverdue} days overdue
                         </Badge>
-                        <p className="text-lg font-bold text-red-400">{formatCurrency(defaulter.amount)}</p>
-                        <p className="text-sm text-gray-400">Due: {formatDate(defaulter.dueDate)}</p>
+                        <p className="text-2xl font-bold text-red-400">
+                          {formatCurrency(defaulter.totalOutstanding)}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
+                  {/* Bottom summary message */}
+                  <div className="px-6 pb-4 text-sm text-white/80">
+                    {`${defaulter.borrowerName} has missed ${defaulter.consecutiveMissed} payments of ${formatCurrency(defaulter.totalOutstanding)}`}
+                  </div>
                 </Card>
               ))}
             </div>

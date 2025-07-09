@@ -326,6 +326,26 @@ export default function Defaulters() {
                                 Outstanding: {formatCurrency(defaulter.totalOutstanding)}
                               </span>
                             </div>
+                            {/* New summary line */}
+                            <div className="mt-2 text-white text-sm">
+                              {(() => {
+                                const perPayment = defaulter.consecutiveMissed > 0
+                                  ? defaulter.totalOutstanding / defaulter.consecutiveMissed
+                                  : 0;
+                                return `${defaulter.borrowerName} has missed ${defaulter.consecutiveMissed} payments of ${formatCurrency(perPayment)}`;
+                              })()}
+                            </div>
+                            <div className="text-xl font-bold text-white">
+                              {formatCurrency(defaulter.totalOutstanding)}
+                            </div>
+                            <div className="text-white text-sm">
+                              {(() => {
+                                const perPayment = defaulter.consecutiveMissed > 0
+                                  ? defaulter.totalOutstanding / defaulter.consecutiveMissed
+                                  : 0;
+                                return `${formatCurrency(perPayment)} x ${defaulter.consecutiveMissed}`;
+                              })()}
+                            </div>
                           </div>
                         </div>
                         <div className="flex space-x-2">
