@@ -25,7 +25,7 @@ const StatCard = ({ title, value, icon, trend, isAmount = false }: StatCardProps
   return (
     <Card className="bg-black border-gray-700 hover:bg-[#111111] transition-colors duration-200 cursor-pointer">
       <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold">{title}</h3>
           <div className="flex items-center gap-2">
             {isAmount && (
@@ -40,6 +40,7 @@ const StatCard = ({ title, value, icon, trend, isAmount = false }: StatCardProps
             <div className="text-white">{icon}</div>
           </div>
         </div>
+        <div className="border-b border-gray-700 mb-4"></div>
         <p className="text-3xl font-bold text-white">
           {isAmount && !isVisible ? "••••••" : value}
         </p>

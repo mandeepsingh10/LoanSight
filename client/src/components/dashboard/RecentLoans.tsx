@@ -78,7 +78,7 @@ const RecentLoans = () => {
 
   return (
     <Card className="bg-black border border-gray-700 rounded-lg shadow overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between px-6 pt-3 pb-0 mb-3">
+      <CardHeader className="flex flex-row items-center justify-between px-6 pt-3 pb-3 border-b border-gray-700">
         <CardTitle className="text-white flex items-center gap-2">
           <Clock size={20} className="text-blue-400" />
           Recent Loans
