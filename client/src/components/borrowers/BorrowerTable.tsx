@@ -190,6 +190,12 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
     return maxStreak>=2;
   };
 
+  // Function to check if a borrower has any defaulted loans
+  const hasDefaultedLoans = (borrower: BorrowerWithLoans) => {
+    if (!borrower.loans || borrower.loans.length === 0) return false;
+    return borrower.loans.some(loan => loan.status === 'defaulted' || isLoanDefaulter(loan.id));
+  };
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/borrowers/${id}`);
@@ -392,7 +398,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white mr-3 ${
-                          isDefaulter(borrower.id) ? 'bg-red-600' : 'bg-blue-600'
+                          hasDefaultedLoans(borrower) ? 'bg-red-600' : 'bg-blue-600'
                         }`}>
                           <span>{borrower.name ? borrower.name.charAt(0).toUpperCase() : '?'}</span>
                         </div>
@@ -559,7 +565,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                                     size="sm"
                                     onClick={() => toggleBorrowerExpansion(borrower.id)}
                                     className={`w-8 h-8 rounded-full flex items-center justify-center text-white p-0 hover:opacity-80 ${
-                                      isDefaulter(borrower.id) ? 'bg-red-600' : 'bg-blue-600'
+                                      hasDefaultedLoans(borrower) ? 'bg-red-600' : 'bg-blue-600'
                                     }`}
                                   >
                                     <span>{borrower.name ? borrower.name.charAt(0).toUpperCase() : '?'}</span>
