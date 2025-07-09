@@ -1349,12 +1349,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const backupData = {
         metadata: {
           exportDate: new Date().toISOString(),
-          version: '2.1',
+          version: '2.2',
           totalBorrowers: borrowers.length,
           totalLoans: loans.length,
           totalPayments: payments.length,
           totalLoanItems: allLoanItems.length,
           totalPaymentTransactions: allPaymentTransactions.length,
+          totalCompletedLoans: loans.filter(loan => loan.status === 'completed').length,
+          totalActiveLoans: loans.filter(loan => loan.status === 'active').length,
+          totalDefaultedLoans: loans.filter(loan => loan.status === 'defaulted').length,
           totalUsers: 0, // Users are not backed up for security
           totalPhotos: Object.keys(photos).length,
           totalPhotoSize: Object.values(photos).reduce((sum, photo) => sum + (photo.size || 0), 0),
@@ -1370,6 +1373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             resetPaymentFunctionality: true,
             dueAmountTracking: true,
             paymentStatusLogic: true,
+            automaticLoanCompletion: true,
             userManagement: false // Users are not included in backup
           }
         },
@@ -1611,6 +1615,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           payments: data.payments.length,
           loanItems: data.loanItems ? data.loanItems.length : 0,
           paymentTransactions: data.paymentTransactions ? data.paymentTransactions.length : 0,
+          completedLoans: data.loans.filter((loan: any) => loan.status === 'completed').length,
+          activeLoans: data.loans.filter((loan: any) => loan.status === 'active').length,
+          defaultedLoans: data.loans.filter((loan: any) => loan.status === 'defaulted').length,
           users: 0, // Users are not restored for security
           photos: photos ? Object.keys(photos).length : 0,
           photoSize: photos ? Object.values(photos).reduce((sum, photo) => sum + (typeof photo === 'string' ? 0 : (photo.size || 0)), 0) : 0

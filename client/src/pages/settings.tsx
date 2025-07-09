@@ -53,10 +53,11 @@ const Settings = () => {
       const userText = data.metadata.totalUsers > 0 ? `, ${data.metadata.totalUsers} users` : '';
       const loanItemsText = data.metadata.totalLoanItems > 0 ? `, ${data.metadata.totalLoanItems} loan items` : '';
       const transactionsText = data.metadata.totalPaymentTransactions > 0 ? `, ${data.metadata.totalPaymentTransactions} payment transactions` : '';
+      const completionText = data.metadata.totalCompletedLoans > 0 ? `, ${data.metadata.totalCompletedLoans} completed loans` : '';
       
       toast({
         title: "Backup Created Successfully",
-        description: `Backup contains ${data.metadata.totalBorrowers} borrowers, ${data.metadata.totalLoans} loans, ${data.metadata.totalPayments} payments${loanItemsText}${transactionsText}${photoText}${userText}.`,
+        description: `Backup contains ${data.metadata.totalBorrowers} borrowers, ${data.metadata.totalLoans} loans (${data.metadata.totalActiveLoans} active${completionText}), ${data.metadata.totalPayments} payments${loanItemsText}${transactionsText}${photoText}${userText}.`,
       });
       
       // Trigger download
@@ -122,10 +123,11 @@ const Settings = () => {
         const userText = data.stats.users > 0 ? `, ${data.stats.users} users` : '';
         const loanItemsText = data.stats.loanItems > 0 ? `, ${data.stats.loanItems} loan items` : '';
         const transactionsText = data.stats.paymentTransactions > 0 ? `, ${data.stats.paymentTransactions} payment transactions` : '';
+        const completionText = data.stats.completedLoans > 0 ? `, ${data.stats.completedLoans} completed loans` : '';
         
         toast({
           title: "Data Restored Successfully",
-          description: `Restored ${data.stats.borrowers} borrowers, ${data.stats.loans} loans, ${data.stats.payments} payments${loanItemsText}${transactionsText}${photoText}${userText}.`,
+          description: `Restored ${data.stats.borrowers} borrowers, ${data.stats.loans} loans (${data.stats.activeLoans} active${completionText}), ${data.stats.payments} payments${loanItemsText}${transactionsText}${photoText}${userText}.`,
         });
         // Refresh all data
         queryClient.invalidateQueries();
@@ -273,6 +275,7 @@ const Settings = () => {
               <li>• Loan items and gold/silver details</li>
               <li>• Payment validation and due amount tracking</li>
               <li>• Reset payment functionality</li>
+              <li>• Automatic loan completion logic and status tracking</li>
             </ul>
           </div>
 

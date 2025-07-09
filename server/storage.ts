@@ -71,6 +71,9 @@ export interface IStorage {
   deletePaymentTransaction(id: number): Promise<boolean>;
   updatePaymentTransaction(id: number, data: Partial<PaymentTransaction>): Promise<PaymentTransaction | undefined>;
   resetPayment(id: number): Promise<Payment | undefined>;
+  
+  // Loan completion logic
+  checkAndMarkLoanCompleted(loanId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -475,7 +478,15 @@ export class DatabaseStorage implements IStorage {
       .set(updateData)
       .where(eq(payments.id, id))
       .returning();
-    return result.length > 0 ? result[0] : undefined;
+    
+    if (result.length > 0) {
+      // Check if loan should be marked as completed after this payment
+      const payment = result[0];
+      await this.checkAndMarkLoanCompleted(payment.loanId);
+      return payment;
+    }
+    
+    return undefined;
   }
 
   async deletePayment(id: number): Promise<boolean> {
@@ -861,6 +872,9 @@ export class DatabaseStorage implements IStorage {
           status: status
         })
         .where(eq(payments.id, paymentId));
+      
+      // Check if loan should be marked as completed after this transaction update
+      await this.checkAndMarkLoanCompleted(paymentId);
     }
     return updated;
   }
@@ -886,7 +900,77 @@ export class DatabaseStorage implements IStorage {
       .where(eq(payments.id, id))
       .returning();
     
-    return result.length > 0 ? result[0] : undefined;
+    if (result.length > 0) {
+      // Check if loan completion status needs to be updated after reset
+      const payment = result[0];
+      await this.checkAndMarkLoanCompleted(payment.loanId);
+      return payment;
+    }
+    
+    return undefined;
+  }
+
+  async checkAndMarkLoanCompleted(loanId: number): Promise<boolean> {
+    try {
+      // Get the loan details
+      const loan = await this.getLoanById(loanId);
+      if (!loan) {
+        console.log(`Loan ${loanId} not found for completion check`);
+        return false;
+      }
+
+      // Skip if loan is already completed, defaulted, or cancelled
+      if (loan.status === 'completed' || loan.status === 'defaulted' || loan.status === 'cancelled') {
+        return false;
+      }
+
+      // Get all payments for this loan
+      const payments = await this.getPaymentsByLoanId(loanId);
+      if (payments.length === 0) {
+        console.log(`No payments found for loan ${loanId}`);
+        return false;
+      }
+
+      let shouldComplete = false;
+
+      if (loan.loanStrategy === 'emi') {
+        // For EMI loans: check if all payments are collected
+        const allPaymentsCollected = payments.every(payment => 
+          payment.status === 'collected' && payment.paidAmount && payment.paidAmount >= payment.amount
+        );
+        
+        if (allPaymentsCollected) {
+          console.log(`All payments collected for EMI loan ${loanId}, marking as completed`);
+          shouldComplete = true;
+        }
+      } else {
+        // For FLAT, CUSTOM, and GOLD_SILVER loans: check if total amount paid equals loan amount
+        const totalPaidAmount = payments.reduce((total, payment) => {
+          return total + (payment.paidAmount || 0);
+        }, 0);
+
+        const loanAmount = loan.amount;
+        
+        if (totalPaidAmount >= loanAmount) {
+          console.log(`Total amount paid (${totalPaidAmount}) >= loan amount (${loanAmount}) for ${loan.loanStrategy} loan ${loanId}, marking as completed`);
+          shouldComplete = true;
+        }
+      }
+
+      if (shouldComplete) {
+        // Update loan status to completed
+        const updatedLoan = await this.updateLoanStatus(loanId, 'completed');
+        if (updatedLoan) {
+          console.log(`Loan ${loanId} successfully marked as completed`);
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error(`Error checking loan completion for loan ${loanId}:`, error);
+      return false;
+    }
   }
 }
 
