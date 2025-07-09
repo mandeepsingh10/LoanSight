@@ -68,7 +68,7 @@ const UpcomingPayments = () => {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between px-6 pt-6 pb-0">
+      <CardHeader className="flex flex-row items-center justify-between px-6 pt-3 pb-3 border-b border-gray-700">
         <CardTitle>Upcoming Payments</CardTitle>
         <Link href="/payments">
           <Button variant="link" className="text-primary font-medium">

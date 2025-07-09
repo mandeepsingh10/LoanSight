@@ -10,10 +10,11 @@ const StatusBadge = ({ status, className }: StatusBadgeProps) => {
   
   // Set colors based on status
   const statusStyles = {
-    "active": "bg-green-100 text-green-800",
-    "current": "bg-green-100 text-green-800",
+    "active": "bg-blue-600 text-white",
+    "current": "bg-blue-600 text-white",
     "overdue": "bg-orange-100 text-orange-800",
     "defaulter": "bg-red-600 text-white font-bold",
+    "defaulted": "bg-red-600 text-white font-bold",
     "missed": "bg-red-100 text-red-800",
     "due soon": "bg-yellow-100 text-yellow-800",
     "upcoming": "bg-yellow-100 text-yellow-800",

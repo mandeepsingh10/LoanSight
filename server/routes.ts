@@ -1349,7 +1349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const backupData = {
         metadata: {
           exportDate: new Date().toISOString(),
-          version: '2.2',
+          version: '2.3', // Increment version for new features
           totalBorrowers: borrowers.length,
           totalLoans: loans.length,
           totalPayments: payments.length,
@@ -1374,7 +1374,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             dueAmountTracking: true,
             paymentStatusLogic: true,
             automaticLoanCompletion: true,
-            userManagement: false // Users are not included in backup
+            userManagement: false, // Users are not included in backup
+            defaultersTab: true, // New feature
+            statusBadges: true, // New feature
+            newColumnOrder: true // New feature
           }
         },
         data: {

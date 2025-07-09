@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import StatusBadge from "@/components/ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -31,6 +32,7 @@ import { Loan } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiRequest } from "@/lib/queryClient";
+import { useQuery as useReactQuery } from "@tanstack/react-query";
 
 interface LoanHistoryProps {
   borrowerId: number;
@@ -39,7 +41,7 @@ interface LoanHistoryProps {
 }
 
 export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryProps) => {
-  const [activeTab, setActiveTab] = useState<"active" | "completed" | "all">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "completed" | "defaulted" | "all">("all");
   const [confirmDeleteLoan, setConfirmDeleteLoan] = useState<number | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const { toast } = useToast();
@@ -96,15 +98,52 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
   const getFilteredLoans = () => {
     switch (activeTab) {
       case "active":
-        return loans.filter((loan: Loan) => loan.status === "active");
+        return loans.filter((loan: Loan) => loan.status === "active" && !isLoanDefaulted(loan.id));
       case "completed":
         return loans.filter((loan: Loan) => loan.status === "completed");
+      case "defaulted":
+        return loans.filter((loan: Loan) => isLoanDefaulted(loan.id));
       case "all":
         return loans;
       default:
         return loans;
     }
   };
+
+  // Add EMI calculation function
+  const calculateEMIAmount = (loan: Loan) => {
+    if (loan.loanStrategy === "emi") {
+      if (loan.customEmiAmount) {
+        return loan.customEmiAmount;
+      } else if (loan.amount && loan.tenure) {
+        // Simple EMI calculation (amount / tenure) - you might want to add interest calculation
+        return loan.amount / loan.tenure;
+      }
+    } else if (loan.loanStrategy === "flat" && loan.flatMonthlyAmount) {
+      return loan.flatMonthlyAmount;
+    }
+    return null;
+  };
+
+  // Fetch payments for all loans to determine defaulted status (define early)
+  const { data: allPayments = [] } = useReactQuery({
+    queryKey: ["/api/payments", borrowerId],
+  });
+
+  // Add helper before filtering
+  function isLoanDefaulted(loanId: number) {
+    const payments = (allPayments as any[]).filter(p => p.loanId === loanId);
+    if (payments.length === 0) return false;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    let streak=0,maxStreak=0;
+    payments.sort((a,b)=> new Date(a.dueDate).getTime()-new Date(b.dueDate).getTime()).forEach(p=>{
+      const due=new Date(p.dueDate);
+      const overdue=(today.getTime()-due.getTime())/(1000*60*60*24)>0;
+      if(p.status==='collected'||!overdue){streak=0;}else{streak++;if(streak>maxStreak)maxStreak=streak;}
+    });
+    return maxStreak>=2;
+  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -224,9 +263,10 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
         <div>
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
             <TabsList className="bg-gray-900 rounded-lg">
-              <TabsTrigger value="active">Active ({loans.filter((l: Loan) => l.status === "active").length})</TabsTrigger>
-              <TabsTrigger value="completed">Completed ({loans.filter((l: Loan) => l.status === "completed").length})</TabsTrigger>
               <TabsTrigger value="all">All ({loans.length})</TabsTrigger>
+              <TabsTrigger value="active">Active ({loans.filter((l: Loan) => l.status === "active" && !isLoanDefaulted(l.id)).length})</TabsTrigger>
+              <TabsTrigger value="defaulted">Defaulted ({loans.filter((l: Loan)=> isLoanDefaulted(l.id)).length})</TabsTrigger>
+              <TabsTrigger value="completed">Completed ({loans.filter((l: Loan) => l.status === "completed").length})</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -238,52 +278,72 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
               <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider w-12 text-center">No.</th>
               <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-left">Amount</th>
               <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-left">Type</th>
+              <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Start Date</th>
+              <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-left">EMI Amount</th>
               <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Tenure</th>
               <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Next Payment</th>
+              <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Status</th>
               <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
             {filteredLoans.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-gray-300">
+                <td colSpan={9} className="px-6 py-4 text-center text-gray-300">
                   {activeTab === "active" && "No active loans"}
                   {activeTab === "completed" && "No completed loans"}
                   {activeTab === "all" && "No loans found"}
                 </td>
               </tr>
             ) : (
-              filteredLoans.map((loan: Loan, index: number) => (
-                <tr key={loan.id} className="hover:bg-[#111111]">
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-gray-400 font-medium">{index + 1}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-white font-medium text-left">{formatCurrency(loan.amount)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-white text-left">{getLoanStrategyDisplay(loan.loanStrategy)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-white">{loan.tenure ? `${loan.tenure} months` : 'NA'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-white">
-                    <span className="font-medium whitespace-nowrap">{loan.nextPayment}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="flex items-center justify-center space-x-3">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onViewLoan(loan, index + 1)}
-                      >
-                        <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
-                      </Button>
-                      {isAdmin && (
+              filteredLoans.map((loan: Loan, index: number) => {
+                const isDefaulted = isLoanDefaulted(loan.id);
+                const rowClass = isDefaulted ? "text-red-500" : "";
+                const emiAmount = calculateEMIAmount(loan);
+
+                return (
+                  <tr key={loan.id} className={`hover:bg-[#111111] ${rowClass}`}>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-gray-400 font-medium">{index + 1}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-white font-medium text-left">{formatCurrency(loan.amount)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-white text-left">{getLoanStrategyDisplay(loan.loanStrategy)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-white">
+                      {format(new Date(loan.startDate), "dd MMM yyyy")}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-white font-medium text-left">
+                      {emiAmount ? formatCurrency(emiAmount) : "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-white">
+                      {loan.tenure ? `${loan.tenure} months` : 'NA'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-white">
+                      <span className="font-medium whitespace-nowrap">{loan.nextPayment}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <StatusBadge status={isLoanDefaulted(loan.id) ? 'defaulted' : loan.status} className="mx-auto" />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center space-x-3">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setConfirmDeleteLoan(loan.id)}
+                          onClick={() => onViewLoan(loan, index + 1)}
                         >
-                          <Trash2 size={16} className="text-red-500 hover:text-red-400" />
+                          <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
                         </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setConfirmDeleteLoan(loan.id)}
+                          >
+                            <Trash2 size={16} className="text-red-500 hover:text-red-400" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
