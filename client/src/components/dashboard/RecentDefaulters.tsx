@@ -106,7 +106,7 @@ const RecentDefaulters = () => {
 
   return (
     <Card className="bg-black border-gray-700">
-      <CardHeader className="flex flex-row items-center justify-between px-6 pt-6 pb-0">
+      <CardHeader className="flex flex-row items-center justify-between px-6 pt-3 pb-0">
         <CardTitle className="text-white flex items-center gap-2">
           <User size={20} className="text-red-500" />
           Defaulters
