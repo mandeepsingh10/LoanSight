@@ -24,7 +24,7 @@ import {
   insertPaymentSchema, updatePaymentSchema, 
   createUserSchema, updateUserSchema, changePasswordSchema, resetPasswordSchema, loginSchema,
   PaymentStatus, LoanStrategy, UserRole,
-  borrowers, loans, payments, users, loanItems
+  borrowers, loans, payments, users, loanItems, paymentTransactions
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -1147,6 +1147,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/payments/:id/transactions', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const transactions = await storage.getPaymentTransactionsByPaymentId(id);
+      res.json(transactions);
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   app.post('/api/payments/:id/collect', requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1281,6 +1291,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payments = await storage.getPayments();
       // Fetch all loan items
       const allLoanItems = await db.select().from(loanItems);
+      // Fetch all payment transactions
+      const allPaymentTransactions = await db.select().from(paymentTransactions);
       
       // Get photos from uploads directory and embed them in backup
       const photosDir = path.join(__dirname, '../uploads/photos');
@@ -1337,10 +1349,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const backupData = {
         metadata: {
           exportDate: new Date().toISOString(),
-          version: '2.0',
+          version: '2.2',
           totalBorrowers: borrowers.length,
           totalLoans: loans.length,
           totalPayments: payments.length,
+          totalLoanItems: allLoanItems.length,
+          totalPaymentTransactions: allPaymentTransactions.length,
+          totalCompletedLoans: loans.filter(loan => loan.status === 'completed').length,
+          totalActiveLoans: loans.filter(loan => loan.status === 'active').length,
+          totalDefaultedLoans: loans.filter(loan => loan.status === 'defaulted').length,
           totalUsers: 0, // Users are not backed up for security
           totalPhotos: Object.keys(photos).length,
           totalPhotoSize: Object.values(photos).reduce((sum, photo) => sum + (photo.size || 0), 0),
@@ -1350,6 +1367,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             multipleLoanStrategies: true,
             customPayments: true,
             notesSupport: true,
+            paymentTransactions: true,
+            loanItems: true,
+            paymentValidation: true,
+            resetPaymentFunctionality: true,
+            dueAmountTracking: true,
+            paymentStatusLogic: true,
+            automaticLoanCompletion: true,
             userManagement: false // Users are not included in backup
           }
         },
@@ -1357,7 +1381,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           borrowers,
           loans,
           payments,
-          loanItems: allLoanItems // Add loanItems to backup data
+          loanItems: allLoanItems, // Add loanItems to backup data
+          paymentTransactions: allPaymentTransactions // Add payment transactions to backup data
         },
         photos
       };
@@ -1386,7 +1411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Clear existing data using TRUNCATE CASCADE for complete cleanup
       // Note: Users table is not cleared to preserve admin access
-      await db.execute(sql.raw('TRUNCATE TABLE payments, loans, borrowers RESTART IDENTITY CASCADE'));
+      await db.execute(sql.raw('TRUNCATE TABLE payment_transactions, loan_items, payments, loans, borrowers RESTART IDENTITY CASCADE'));
       console.log('Tables cleared successfully (users preserved)');
       
       // Restore photos if they exist
@@ -1520,10 +1545,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Restoring payments...');
       // Restore payments using the mapped loan IDs
+      const paymentIdMapping = new Map();
       for (const payment of data.payments) {
         const newLoanId = loanIdMapping.get(payment.loanId);
         if (newLoanId) {
-          await storage.createPayment({
+          const [newPayment] = await db.insert(payments).values({
             loanId: newLoanId,
             dueDate: payment.dueDate,
             amount: payment.amount,
@@ -1533,7 +1559,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             dueAmount: payment.dueAmount,
             paymentMethod: payment.paymentMethod,
             notes: payment.notes
-          });
+          }).returning();
+          paymentIdMapping.set(payment.id, newPayment.id);
         }
       }
       
@@ -1559,6 +1586,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log('Restoring payment transactions...');
+      // Restore payment transactions
+      if (data.paymentTransactions && Array.isArray(data.paymentTransactions)) {
+        // Clear existing payment transactions
+        await db.delete(paymentTransactions);
+        // Map old payment IDs to new ones
+        for (const transaction of data.paymentTransactions) {
+          const newPaymentId = paymentIdMapping.get(transaction.paymentId);
+          if (newPaymentId) {
+            await db.insert(paymentTransactions).values({
+              paymentId: newPaymentId,
+              amount: transaction.amount,
+              paidDate: transaction.paidDate,
+              paymentMethod: transaction.paymentMethod,
+              notes: transaction.notes
+            });
+          }
+        }
+      }
+      
       console.log('Data restore completed successfully');
       res.json({ 
         message: 'Data restored successfully',
@@ -1566,6 +1613,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           borrowers: data.borrowers.length,
           loans: data.loans.length,
           payments: data.payments.length,
+          loanItems: data.loanItems ? data.loanItems.length : 0,
+          paymentTransactions: data.paymentTransactions ? data.paymentTransactions.length : 0,
+          completedLoans: data.loans.filter((loan: any) => loan.status === 'completed').length,
+          activeLoans: data.loans.filter((loan: any) => loan.status === 'active').length,
+          defaultedLoans: data.loans.filter((loan: any) => loan.status === 'defaulted').length,
           users: 0, // Users are not restored for security
           photos: photos ? Object.keys(photos).length : 0,
           photoSize: photos ? Object.values(photos).reduce((sum, photo) => sum + (typeof photo === 'string' ? 0 : (photo.size || 0)), 0) : 0
@@ -1612,12 +1664,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let paidDate = null;
       let paidAmount = null;
       
-      // If payment date is today or in the past, automatically mark as collected
-      if (isBefore(paymentDate, today) || paymentDate.getTime() === today.getTime()) {
-        status = PaymentStatus.COLLECTED;
-        paidDate = dueDate; // Use the user-selected payment date
-        paidAmount = amount;
-        console.log(`Auto-marking payment as collected: payment date ${dueDate} is today or in the past`);
+      // Consistent payment status logic for all loan types
+      if (isBefore(paymentDate, today)) {
+        // Backdated payments: always show as missed/overdue
+        status = PaymentStatus.OVERDUE;
+      } else if (paymentDate.getTime() === today.getTime()) {
+        // Today's payments: show as due today
+        status = PaymentStatus.DUE_SOON;
+      } else {
+        // Future payments: check if due within 3 days
+        const threeDaysFromNow = new Date(today);
+        threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+        
+        if (isBefore(paymentDate, threeDaysFromNow) || paymentDate.getTime() === threeDaysFromNow.getTime()) {
+          status = PaymentStatus.DUE_SOON; // Due within 3 days
+        } else {
+          status = PaymentStatus.UPCOMING; // Future payments
+        }
       }
 
       // Create the payment
@@ -1764,12 +1827,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Starting database cleanup - deleting all data...');
       
       // Delete all data using TRUNCATE CASCADE for complete cleanup and reset sequences
-      await db.execute(sql.raw('TRUNCATE TABLE payments, loans, borrowers RESTART IDENTITY CASCADE'));
+      await db.execute(sql.raw('TRUNCATE TABLE payment_transactions, loan_items, payments, loans, borrowers RESTART IDENTITY CASCADE'));
       console.log('All tables cleared and ID sequences reset successfully');
       
       res.status(200).json({ 
         message: 'Database cleaned successfully',
-        deletedTables: ['payments', 'loans', 'borrowers'],
+        deletedTables: ['payment_transactions', 'loan_items', 'payments', 'loans', 'borrowers'],
         sequencesReset: true
       });
     } catch (error) {
@@ -1809,6 +1872,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: error.message });
       }
       return res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.patch('/api/payment-transactions/:id', requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { amount, paidDate, paymentMethod, notes } = req.body;
+      const updated = await storage.updatePaymentTransaction(id, {
+        amount,
+        paidDate,
+        paymentMethod,
+        notes
+      });
+      if (!updated) {
+        return res.status(404).json({ message: 'Payment transaction not found' });
+      }
+      res.json(updated);
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.post('/api/payments/:id/reset', requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const resetPayment = await storage.resetPayment(id);
+      if (!resetPayment) {
+        return res.status(404).json({ message: 'Payment not found' });
+      }
+      res.json(resetPayment);
+    } catch (error) {
+      handleError(error, res);
     }
   });
 

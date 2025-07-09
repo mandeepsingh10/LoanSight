@@ -51,10 +51,13 @@ const Settings = () => {
       const photoText = data.metadata.totalPhotos > 0 ? 
         `, ${data.metadata.totalPhotos} photos (${(data.metadata.totalPhotoSize / 1024 / 1024).toFixed(1)} MB)` : '';
       const userText = data.metadata.totalUsers > 0 ? `, ${data.metadata.totalUsers} users` : '';
+      const loanItemsText = data.metadata.totalLoanItems > 0 ? `, ${data.metadata.totalLoanItems} loan items` : '';
+      const transactionsText = data.metadata.totalPaymentTransactions > 0 ? `, ${data.metadata.totalPaymentTransactions} payment transactions` : '';
+      const completionText = data.metadata.totalCompletedLoans > 0 ? `, ${data.metadata.totalCompletedLoans} completed loans` : '';
       
       toast({
         title: "Backup Created Successfully",
-        description: `Backup contains ${data.metadata.totalBorrowers} borrowers, ${data.metadata.totalLoans} loans, ${data.metadata.totalPayments} payments${photoText}${userText}.`,
+        description: `Backup contains ${data.metadata.totalBorrowers} borrowers, ${data.metadata.totalLoans} loans (${data.metadata.totalActiveLoans} active${completionText}), ${data.metadata.totalPayments} payments${loanItemsText}${transactionsText}${photoText}${userText}.`,
       });
       
       // Trigger download
@@ -118,10 +121,13 @@ const Settings = () => {
         const photoText = data.stats.photos > 0 ? 
           `, ${data.stats.photos} photos (${(data.stats.photoSize / 1024 / 1024).toFixed(1)} MB)` : '';
         const userText = data.stats.users > 0 ? `, ${data.stats.users} users` : '';
+        const loanItemsText = data.stats.loanItems > 0 ? `, ${data.stats.loanItems} loan items` : '';
+        const transactionsText = data.stats.paymentTransactions > 0 ? `, ${data.stats.paymentTransactions} payment transactions` : '';
+        const completionText = data.stats.completedLoans > 0 ? `, ${data.stats.completedLoans} completed loans` : '';
         
         toast({
           title: "Data Restored Successfully",
-          description: `Restored ${data.stats.borrowers} borrowers, ${data.stats.loans} loans, ${data.stats.payments} payments${photoText}${userText}.`,
+          description: `Restored ${data.stats.borrowers} borrowers, ${data.stats.loans} loans (${data.stats.activeLoans} active${completionText}), ${data.stats.payments} payments${loanItemsText}${transactionsText}${photoText}${userText}.`,
         });
         // Refresh all data
         queryClient.invalidateQueries();
@@ -258,6 +264,7 @@ const Settings = () => {
               <li>• All borrower information and contact details</li>
               <li>• Complete loan records and payment schedules</li>
               <li>• Payment history and collection status</li>
+              <li>• Payment transaction records and collection methods</li>
               <li>• Interest calculations and EMI details</li>
               <li>• Database structure and relationships</li>
               <li>• Borrower photos and documents (embedded in backup)</li>
@@ -265,6 +272,10 @@ const Settings = () => {
               <li>• Loan-specific guarantor information</li>
               <li>• Multiple loan strategies (EMI, FLAT, Custom, Gold & Silver)</li>
               <li>• Payment notes and collection methods</li>
+              <li>• Loan items and gold/silver details</li>
+              <li>• Payment validation and due amount tracking</li>
+              <li>• Reset payment functionality</li>
+              <li>• Automatic loan completion logic and status tracking</li>
             </ul>
           </div>
 

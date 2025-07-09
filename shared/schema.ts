@@ -89,6 +89,17 @@ export const payments = pgTable("payments", {
   notes: text("notes"),
 });
 
+// Payment transactions table for tracking individual payment records
+export const paymentTransactions = pgTable("payment_transactions", {
+  id: serial("id").primaryKey(),
+  paymentId: integer("payment_id").notNull().references(() => payments.id, { onDelete: "cascade" }),
+  amount: real("amount").notNull(),
+  paidDate: date("paid_date").notNull(),
+  paymentMethod: text("payment_method"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // User roles enum
 export enum UserRole {
   ADMIN = "admin",
@@ -145,6 +156,9 @@ export const updatePaymentSchema = z.object({
   notes: z.string().optional(),
 });
 
+// Schema for inserting payment transaction
+export const insertPaymentTransactionSchema = createInsertSchema(paymentTransactions).omit({ id: true, createdAt: true });
+
 // User schemas
 export const createUserSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -185,10 +199,18 @@ export const loansRelations = relations(loans, ({ one, many }) => ({
   payments: many(payments),
 }));
 
-export const paymentsRelations = relations(payments, ({ one }) => ({
+export const paymentsRelations = relations(payments, ({ one, many }) => ({
   loan: one(loans, {
     fields: [payments.loanId],
     references: [loans.id],
+  }),
+  transactions: many(paymentTransactions),
+}));
+
+export const paymentTransactionsRelations = relations(paymentTransactions, ({ one }) => ({
+  payment: one(payments, {
+    fields: [paymentTransactions.paymentId],
+    references: [payments.id],
   }),
 }));
 
@@ -217,6 +239,9 @@ export type LoanStatus = typeof LoanStatus[keyof typeof LoanStatus];
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type UpdatePayment = z.infer<typeof updatePaymentSchema>;
+
+export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
+export type InsertPaymentTransaction = z.infer<typeof insertPaymentTransactionSchema>;
 
 // User types
 export type User = typeof users.$inferSelect;

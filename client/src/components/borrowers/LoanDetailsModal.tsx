@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -48,7 +48,9 @@ import {
   CreditCard,
   Pencil,
   X,
-  Save
+  Save,
+  History,
+  RotateCcw
 } from "lucide-react";
 import { Loan, Payment } from "@/types";
 
@@ -71,15 +73,16 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const [upiId, setUpiId] = useState("");
   const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  // Settlement dialog state
-  const [settlementDialog, setSettlementDialog] = useState(false);
-  const [settlementPayment, setSettlementPayment] = useState<Payment | null>(null);
-  const [settlementDate, setSettlementDate] = useState("");
-  const [settlementNotes, setSettlementNotes] = useState("");
+  // Payment history dialog state
+  const [historyDialog, setHistoryDialog] = useState(false);
+  const [selectedPaymentForHistory, setSelectedPaymentForHistory] = useState<Payment | null>(null);
 
   // Delete dialog state
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deletePayment, setDeletePayment] = useState<Payment | null>(null);
+  const [resetDialog, setResetDialog] = useState(false);
+  const [resetPayment, setResetPayment] = useState<Payment | null>(null);
+  const [resetConfirmation, setResetConfirmation] = useState("");
 
   // Add payment dialogs state
   const [showAddSinglePayment, setShowAddSinglePayment] = useState(false);
@@ -99,6 +102,17 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState("");
 
+  // State for editing a payment transaction in history
+  const [editingTransactionId, setEditingTransactionId] = useState<number | null>(null);
+  // Add upiId to editTransactionForm state
+  const [editTransactionForm, setEditTransactionForm] = useState({
+    amount: '',
+    paidDate: '',
+    paymentMethod: '',
+    notes: '',
+    upiId: ''
+  });
+
   // Fetch payments for this specific loan
   const { data: payments = [], isLoading: paymentsLoading } = useQuery({
     queryKey: ["/api/payments", "loan", loan?.id],
@@ -116,6 +130,38 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       });
     },
     enabled: isOpen && !!loan,
+  });
+
+  // Fetch payment transactions for each payment
+  const { data: paymentTransactionsMap = {}, isLoading: transactionsLoading } = useQuery({
+    queryKey: ["/api/payments/transactions", "loan", loan?.id, payments.length],
+    queryFn: async () => {
+      if (!loan || !payments.length) return {};
+      
+      const transactionsMap: { [paymentId: number]: any[] } = {};
+      
+      // Fetch transactions for each payment that has been paid
+      for (const payment of payments) {
+        if (payment.paidAmount && payment.paidAmount > 0) {
+          try {
+            const response = await apiRequest("GET", `/api/payments/${payment.id}/transactions`);
+            if (response.ok) {
+              const transactions = await response.json();
+              transactionsMap[payment.id] = transactions;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch transactions for payment ${payment.id}:`, error);
+            transactionsMap[payment.id] = [];
+          }
+        }
+      }
+      
+      return transactionsMap;
+    },
+    enabled: isOpen && !!loan && payments.length > 0,
+    refetchOnWindowFocus: false,
+    staleTime: 0, // Always refetch when payments change
+    refetchOnMount: true, // Always refetch when component mounts
   });
 
   // Add single payment mutation
@@ -184,24 +230,26 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
 
   // Collect payment mutation
   const collectPaymentMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const formattedData = {
-        status: "collected",
-        paidDate: data.paidDate || new Date().toISOString().split("T")[0],
-        paidAmount: parseFloat(data.paidAmount),
+    mutationFn: async (data: { id: number; paidAmount: string; paymentMethod: string; notes: string; upiId: string; paymentDate: string }) => {
+      const response = await apiRequest("POST", `/api/payments/${data.id}/collect`, {
+        paidAmount: data.paidAmount,
         paymentMethod: data.paymentMethod,
-        notes: data.notes || "",
-      };
-      
-      const response = await apiRequest("POST", `/api/payments/${data.paymentId}/collect`, formattedData);
+        notes: data.notes,
+        upiId: data.upiId,
+        paidDate: data.paymentDate,
+        status: "collected"
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to collect payment");
+      }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Success",
-        description: "Payment marked as collected.",
+        description: "Payment collected successfully",
       });
-      
       setCollectionDialog(false);
       setSelectedPayment(null);
       setPaymentAmount("");
@@ -210,57 +258,35 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       setUpiId("");
       setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
       
-      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      // First invalidate payments query and wait for it to refetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      
+      // Then invalidate payment transactions query to ensure it refetches with updated payment data
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/transactions", "loan", loan?.id] });
+      
+      // Also refetch payment transactions for the specific payment that was just collected
+      if (selectedPayment) {
+        queryClient.invalidateQueries({ queryKey: ["/api/payments/" + selectedPayment.id + "/transactions"] });
+      }
     },
     onError: (error) => {
+      // Extract user-friendly error message
+      let errorMessage = "Failed to record payment collection. Please try again.";
+      
+      if (error instanceof Error) {
+        const errorText = error.message;
+        if (errorText.includes("Payment amount cannot exceed EMI amount")) {
+          errorMessage = "Payment amount cannot exceed the EMI amount.";
+        } else if (errorText.includes("Payment not found")) {
+          errorMessage = "Payment not found. Please refresh and try again.";
+        } else if (errorText.includes("Network")) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        }
+      }
+      
       toast({
         title: "Error",
-        description: `Failed to mark payment as collected: ${error}`,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Settlement mutation
-  const settlementMutation = useMutation({
-    mutationFn: async () => {
-      if (!settlementPayment || !loan) return;
-      
-      // Calculate the total amount to be paid (original paid amount + due amount)
-      const totalPaidAmount = (settlementPayment.paidAmount || 0) + (settlementPayment.dueAmount || 0);
-      
-      const updateData = {
-        status: 'collected',
-        paidDate: settlementDate,
-        paidAmount: totalPaidAmount,
-        dueAmount: 0, // Clear the due amount
-        paymentMethod: settlementPayment.paymentMethod || 'cash',
-        notes:
-          `₹${totalPaidAmount} was settled on ${format(new Date(settlementDate), 'MMM d, yyyy')}.` +
-          (settlementNotes ? ` ${settlementNotes}` : '') +
-          (settlementPayment.notes ? ` | Original: ${settlementPayment.notes}` : ''),
-      };
-      
-      const response = await apiRequest('POST', `/api/payments/${settlementPayment.id}/collect`, updateData);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Due Settled Successfully!",
-        description: "Payment has been marked as fully settled.",
-      });
-      
-      setSettlementDialog(false);
-      setSettlementPayment(null);
-      setSettlementDate("");
-      setSettlementNotes("");
-      
-      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Settlement Failed",
-        description: "Could not settle the due. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -295,6 +321,40 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
     },
   });
 
+  // Reset payment mutation
+  const resetPaymentMutation = useMutation({
+    mutationFn: async (paymentId: number) => {
+      const response = await apiRequest("POST", `/api/payments/${paymentId}/reset`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to reset payment");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Payment Reset",
+        description: "Payment has been successfully reset to its original state.",
+      });
+      
+      // Close the reset dialog and reset state
+      setResetDialog(false);
+      setResetPayment(null);
+      setResetConfirmation("");
+      
+      // Invalidate and refetch queries to update the UI
+      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/transactions", "loan", loan?.id] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Reset Failed",
+        description: error.message || "Could not reset payment. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Update notes mutation (match borrower notes logic)
   const updateNotesMutation = useMutation({
     mutationFn: async (data: { notes: string }) => {
@@ -322,6 +382,30 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         variant: "destructive",
       });
     },
+  });
+
+  const queryClient = useQueryClient();
+  const editTransactionMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number, data: any }) => {
+      const response = await apiRequest("PATCH", `/api/payment-transactions/${id}`, data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update transaction");
+      }
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      setEditingTransactionId(null);
+      setEditTransactionForm({ amount: '', paidDate: '', paymentMethod: '', notes: '', upiId: '' });
+      toast({ title: "Transaction updated", description: "Payment transaction updated successfully." });
+      // Refetch payment history for the selected payment
+      if (selectedPaymentForHistory) {
+        queryClient.invalidateQueries({ queryKey: ["/api/payments/" + selectedPaymentForHistory.id + "/transactions"] });
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update transaction.", variant: "destructive" });
+    }
   });
 
   useEffect(() => {
@@ -395,7 +479,15 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
     } else if (dueDate.getTime() === today.getTime()) {
       return "due_today";
     } else {
-      return "upcoming";
+      // Check if due within 3 days
+      const threeDaysFromNow = new Date(today);
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      
+      if (dueDate <= threeDaysFromNow) {
+        return "due_soon";
+      } else {
+        return "upcoming";
+      }
     }
   };
 
@@ -408,6 +500,8 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         return <AlertCircle className="h-4 w-4 text-red-600" />;
       case "due_today":
         return <Clock className="h-4 w-4 text-orange-600" />;
+      case "due_soon":
+        return <Clock className="h-4 w-4 text-yellow-600" />;
       default:
         return <Clock className="h-4 w-4 text-blue-600" />;
     }
@@ -422,6 +516,8 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         return "bg-red-100 text-red-800";
       case "due_today":
         return "bg-orange-100 text-orange-800";
+      case "due_soon":
+        return "bg-yellow-100 text-yellow-800";
       default:
         return "bg-blue-100 text-blue-800";
     }
@@ -436,6 +532,8 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         return "Missed";
       case "due_today":
         return "Due Today";
+      case "due_soon":
+        return "Due Soon";
       default:
         return "Upcoming";
     }
@@ -454,33 +552,33 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const handleSubmitCollection = () => {
     if (!selectedPayment) return;
     
-    const paidAmount = parseFloat(paymentAmount);
-    
     // Prepare notes - include UPI ID if UPI payment method is selected
     let finalNotes = paymentNotes;
     if (paymentMethod === "upi" && upiId.trim()) {
       finalNotes = finalNotes ? `${paymentNotes}\nUPI ID: ${upiId}` : `UPI ID: ${upiId}`;
     }
     
-    collectPaymentMutation.mutate({
-      paymentId: selectedPayment.id,
-      paidAmount: paidAmount,
-      paidDate: paymentDate,
-      paymentMethod,
-      notes: finalNotes,
-    });
-  };
-
-  const handleSettleDue = (payment: Payment) => {
-    setSettlementPayment(payment);
-    setSettlementDate(format(new Date(), "yyyy-MM-dd"));
-    setSettlementNotes("");
-    setSettlementDialog(true);
-  };
-
-  const handleSubmitSettlement = () => {
-    if (!settlementPayment || !settlementDate) return;
-    settlementMutation.mutate();
+    // Check if this is a note-only update for an already collected payment
+    const isNoteOnlyUpdate = selectedPayment.paidAmount > 0 && selectedPayment.dueAmount === 0;
+    
+    if (isNoteOnlyUpdate) {
+      // For note-only updates, only send notes
+      collectPaymentMutation.mutate({
+        id: selectedPayment.id,
+        notes: finalNotes,
+      });
+    } else {
+      // For payment collection, send all fields
+      const paidAmount = parseFloat(paymentAmount);
+      collectPaymentMutation.mutate({
+        id: selectedPayment.id,
+        paidAmount: paidAmount,
+        paymentMethod,
+        notes: finalNotes,
+        upiId: upiId,
+        paymentDate: paymentDate,
+      });
+    }
   };
 
   const handleEditPayment = (payment: Payment) => {
@@ -502,6 +600,11 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
     setDeleteDialog(true);
   };
 
+  const handleViewHistory = (payment: Payment) => {
+    setSelectedPaymentForHistory(payment);
+    setHistoryDialog(true);
+  };
+
   const confirmDeletePayment = () => {
     if (deletePayment) {
       deletePaymentMutation.mutate(deletePayment.id);
@@ -511,6 +614,61 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const handleUpdateStatus = (status: string) => {
     // This function can be used to update loan status if needed
     console.log("Update status to:", status);
+  };
+
+  // Helper to determine if payment is already collected
+  const isCollected = !!selectedPayment && selectedPayment.paidAmount > 0;
+
+  // Helper to determine dialog mode
+  const isFirstTimeCollection = !!selectedPayment && (!selectedPayment.paidAmount || selectedPayment.paidAmount === 0);
+  const isPartialCollection = !!selectedPayment && selectedPayment.paidAmount > 0 && selectedPayment.dueAmount > 0;
+  const isFullyCollected = !!selectedPayment && selectedPayment.paidAmount > 0 && selectedPayment.dueAmount === 0;
+
+  // Handler for resetting a payment
+  const handleResetPayment = (payment: Payment) => {
+    setResetPayment(payment);
+    setResetConfirmation("");
+    setResetDialog(true);
+  };
+
+  const handleEditTransaction = (transaction: any) => {
+    // Try to extract UPI ID from notes if present
+    let upiId = '';
+    if (transaction.paymentMethod === 'upi' && transaction.notes) {
+      const match = transaction.notes.match(/UPI ID: ([^\s]+)/);
+      if (match) upiId = match[1];
+    }
+    setEditingTransactionId(transaction.id);
+    setEditTransactionForm({
+      amount: transaction.amount.toString(),
+      paidDate: transaction.paidDate,
+      paymentMethod: transaction.paymentMethod || '',
+      notes: transaction.notes ? transaction.notes.replace(/\n?UPI ID: [^\s]+/, '').trim() : '',
+      upiId: upiId
+    });
+  };
+
+  const handleCancelEditTransaction = () => {
+    setEditingTransactionId(null);
+    setEditTransactionForm({ amount: '', paidDate: '', paymentMethod: '', notes: '', upiId: '' });
+  };
+
+  const handleSaveEditTransaction = () => {
+    if (!editingTransactionId) return;
+    // Compose notes with UPI ID if needed
+    let notes = editTransactionForm.notes;
+    if (editTransactionForm.paymentMethod === 'upi' && editTransactionForm.upiId) {
+      notes = notes ? `${notes}\nUPI ID: ${editTransactionForm.upiId}` : `UPI ID: ${editTransactionForm.upiId}`;
+    }
+    editTransactionMutation.mutate({
+      id: editingTransactionId,
+      data: {
+        amount: parseFloat(editTransactionForm.amount),
+        paidDate: editTransactionForm.paidDate,
+        paymentMethod: editTransactionForm.paymentMethod,
+        notes: notes
+      }
+    });
   };
 
   if (!loan) return null;
@@ -537,28 +695,14 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                       Add Payment
                     </Button>
                   ) : (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Payments
-                          <ChevronDown className="h-4 w-4 ml-2" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setShowAddSinglePayment(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Single Payment
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setShowAddBulkPayments(true)}>
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Add X Months
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button 
+                      size="sm"
+                      onClick={() => setShowAddBulkPayments(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Add X Months
+                    </Button>
                   )}
                 </div>
               </div>
@@ -619,9 +763,9 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                   <TableHeader>
                     <TableRow>
                       <TableHead>Due Date</TableHead>
-                      <TableHead>Amount</TableHead>
+                      <TableHead>EMI Amount</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Payment Details</TableHead>
+                      <TableHead>Paid Amount</TableHead>
                       <TableHead>Dues</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -644,7 +788,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                           </div>
                         </TableCell>
                         <TableCell>
-                          {payment.paidAmount ? (
+                          {payment.paidAmount && payment.paidAmount > 0 ? (
                             <div className="space-y-1">
                               <div className="text-sm font-medium">
                                 {formatCurrency(payment.paidAmount)}
@@ -652,39 +796,17 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                               <div className="text-xs text-gray-500">
                                 {format(new Date(payment.paidDate), "MMM d, yyyy")}
                               </div>
-                              {payment.paymentMethod && (
-                                <div className="text-xs text-gray-500 capitalize">
-                                  {payment.paymentMethod.replace('_', ' ')}
-                                </div>
-                              )}
-                              {payment.notes && (
-                                <div className="text-xs text-gray-700 whitespace-pre-line mt-1">
-                                  {payment.notes}
-                                </div>
-                              )}
                             </div>
                           ) : (
                             <span className="text-gray-500 text-sm">Not collected yet</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {payment.dueAmount > 0 ? (
-                            <div className="flex flex-col items-start gap-2">
-                              <div className="text-orange-600 font-medium">
-                                {formatCurrency(payment.dueAmount)}
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleSettleDue(payment)}
-                                className="h-8 px-2"
-                              >
-                                Settle
-                              </Button>
+                          {payment.dueAmount > 0 && payment.paidAmount > 0 ? (
+                            <div className="text-orange-600 font-medium">
+                              {formatCurrency(payment.dueAmount)}
                             </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+                          ) : null}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -704,13 +826,22 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleEditPayment(payment)}
+                                onClick={() => handleResetPayment(payment)}
                                 className="h-8 w-8 p-0 hover:!bg-black"
-                                title="Edit Payment"
+                                title="Reset Payment"
                               >
-                                <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
+                                <RotateCcw size={16} className="text-red-400 hover:text-red-300" />
                               </Button>
                             )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleViewHistory(payment)}
+                              className="h-8 w-8 p-0 hover:!bg-black"
+                              title="View Payment History"
+                            >
+                              <History className="h-4 w-4 text-green-400 hover:text-green-300" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"
@@ -793,6 +924,209 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
               </CardContent>
             </Card>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment History Dialog */}
+      <Dialog open={historyDialog} onOpenChange={setHistoryDialog}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Payment History</DialogTitle>
+            <DialogDescription>
+              Complete payment history for EMI due on {selectedPaymentForHistory && format(new Date(selectedPaymentForHistory.dueDate), "MMMM d, yyyy")}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {selectedPaymentForHistory && (
+              <>
+                <div className={`grid grid-cols-2 gap-4 p-4 bg-gray-900 rounded-lg border-2 ${selectedPaymentForHistory.dueAmount && selectedPaymentForHistory.dueAmount > 0 ? 'border-red-500' : 'border-green-500'}`}>
+                  <div>
+                    <div className="text-sm text-gray-400">EMI Amount</div>
+                    <div className="text-lg font-semibold text-white">{formatCurrency(selectedPaymentForHistory.amount)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-400">Outstanding Dues</div>
+                    <div className="text-lg font-semibold text-orange-500">{formatCurrency(selectedPaymentForHistory.dueAmount || 0)}</div>
+                  </div>
+                </div>
+                
+                {paymentTransactionsMap[selectedPaymentForHistory.id] && paymentTransactionsMap[selectedPaymentForHistory.id].length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium text-gray-300">Payment Records</div>
+                    <div className="space-y-2">
+                      {paymentTransactionsMap[selectedPaymentForHistory.id].map((transaction: any, index: number) => (
+                        <div key={transaction.id} className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg border border-gray-600 shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden">
+                          {/* Sequence Number Header */}
+                          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-3 py-1.5 border-b border-gray-600">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-white text-blue-700 text-xs font-bold rounded-full flex items-center justify-center shadow-sm">
+                                  {index + 1}
+                                </div>
+                                <span className="text-white font-medium text-xs">Payment #{index + 1}</span>
+                              </div>
+                              <div className="text-white text-xs opacity-80">
+                                {format(new Date(transaction.paidDate), "MMM d, yyyy")}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="p-3">
+                            {editingTransactionId === transaction.id ? (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <Label htmlFor="edit-paid-date" className="text-gray-300 font-medium text-xs">Date</Label>
+                                    <Input
+                                      id="edit-paid-date"
+                                      type="date"
+                                      value={editTransactionForm.paidDate}
+                                      onChange={e => setEditTransactionForm(f => ({ ...f, paidDate: e.target.value }))}
+                                      className="mt-1 bg-gray-700 border-gray-600 text-white focus:border-blue-500 h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="edit-amount" className="text-gray-300 font-medium text-xs">Amount</Label>
+                                    <Input
+                                      id="edit-amount"
+                                      type="number"
+                                      value={editTransactionForm.amount}
+                                      onChange={e => setEditTransactionForm(f => ({ ...f, amount: e.target.value }))}
+                                      className="mt-1 bg-gray-700 border-gray-600 text-white focus:border-blue-500 h-8 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <Label htmlFor="edit-method" className="text-gray-300 font-medium text-xs">Payment Method</Label>
+                                    <select
+                                      id="edit-method"
+                                      value={editTransactionForm.paymentMethod}
+                                      onChange={e => setEditTransactionForm(f => ({ ...f, paymentMethod: e.target.value }))}
+                                      className="flex h-8 w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-white focus:border-blue-500 mt-1"
+                                    >
+                                      <option value="">Select</option>
+                                      <option value="cash">Cash</option>
+                                      <option value="bank_transfer">Bank Transfer</option>
+                                      <option value="upi">UPI</option>
+                                      <option value="other">Other</option>
+                                    </select>
+                                  </div>
+                                  {editTransactionForm.paymentMethod === "upi" && (
+                                    <div>
+                                      <Label htmlFor="edit-upi-id" className="text-gray-300 font-medium text-xs">UPI ID</Label>
+                                      <Input
+                                        id="edit-upi-id"
+                                        type="text"
+                                        value={editTransactionForm.upiId}
+                                        onChange={e => setEditTransactionForm(f => ({ ...f, upiId: e.target.value }))}
+                                        className="mt-1 bg-gray-700 border-gray-600 text-white focus:border-blue-500 h-8 text-sm"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <Label htmlFor="edit-notes" className="text-gray-300 font-medium text-xs">Notes</Label>
+                                  <Textarea
+                                    id="edit-notes"
+                                    placeholder="Add any additional notes about this payment"
+                                    value={editTransactionForm.notes}
+                                    onChange={e => setEditTransactionForm(f => ({ ...f, notes: e.target.value }))}
+                                    rows={2}
+                                    className="w-full mt-1 bg-gray-700 border-gray-600 text-white focus:border-blue-500 text-sm"
+                                  />
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <Button size="sm" onClick={handleSaveEditTransaction} className="bg-green-600 hover:bg-green-700 text-white font-medium text-xs h-7 px-3">
+                                    Save
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={handleCancelEditTransaction} className="border-gray-600 text-gray-300 hover:bg-gray-700 text-xs h-7 px-3">
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {/* Payment Details */}
+                                <div className="grid grid-cols-1 gap-2">
+                                  <div className="flex items-center justify-between p-2 bg-gray-700 rounded-md">
+                                    <span className="text-gray-400 font-medium text-xs">Amount:</span>
+                                    <span className="text-green-400 font-bold text-sm">
+                                      {formatCurrency(transaction.amount)}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between p-2 bg-gray-700 rounded-md">
+                                    <span className="text-gray-400 font-medium text-xs">Payment mode:</span>
+                                    <span className="text-white font-medium text-xs capitalize">
+                                      {transaction.paymentMethod ? transaction.paymentMethod.replace('_', ' ') : 'Not specified'}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Show UPI ID if payment method is UPI */}
+                                  {transaction.paymentMethod === 'upi' && transaction.notes && transaction.notes.match(/UPI ID: ([^\s]+)/) && (
+                                    <div className="flex items-center justify-between p-2 bg-gray-700 rounded-md">
+                                      <span className="text-gray-400 font-medium text-xs">UPI ID:</span>
+                                      <span className="text-white font-mono text-xs">
+                                        {transaction.notes.match(/UPI ID: ([^\s]+)/)[1]}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Notes */}
+                                  {transaction.notes && (
+                                    (() => {
+                                      const notesContent = transaction.paymentMethod === 'upi' 
+                                        ? transaction.notes.replace(/\n?UPI ID: [^\s]+/, '').trim() 
+                                        : transaction.notes;
+                                      
+                                      return notesContent ? (
+                                        <div className="p-2 bg-gray-700 rounded-md">
+                                          <div className="text-gray-400 font-medium text-xs mb-1">Notes:</div>
+                                          <div className="text-white text-xs leading-relaxed">
+                                            {notesContent}
+                                          </div>
+                                        </div>
+                                      ) : null;
+                                    })()
+                                  )}
+                                </div>
+                                
+                                {/* Action Button */}
+                                <div className="flex justify-end pt-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => handleEditTransaction(transaction)}
+                                    className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors h-7 w-7 p-0"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <History className="h-12 w-12 mx-auto mb-4 text-gray-600" />
+                    <div className="text-lg font-medium">No payment records found</div>
+                    <div className="text-sm">This EMI payment hasn't been collected yet.</div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -946,76 +1280,107 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       <Dialog open={collectionDialog} onOpenChange={setCollectionDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Record Payment Collection</DialogTitle>
+            <DialogTitle>
+              {(isFirstTimeCollection || isPartialCollection) ? "Record Payment Collection" : "Edit Payment Details"}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedPayment && selectedPayment.dueDate ? (
+                (isFirstTimeCollection || isPartialCollection)
+                  ? `Record payment collection for EMI due on ${format(new Date(selectedPayment.dueDate), "MMMM d, yyyy")}`
+                  : `Edit details for EMI due on ${format(new Date(selectedPayment.dueDate), "MMMM d, yyyy")}`
+              ) : (
+                "Payment details"
+              )}
+            </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="grid gap-4">
-              <div>
-                <Label htmlFor="amount">Amount to Pay</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="Enter amount to pay"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="payment-date">Payment Date</Label>
-                <Input
-                  id="payment-date"
-                  type="date"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="method">Payment Method</Label>
-                <select
-                  id="method"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="cash">Cash</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="upi">UPI</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              
-              {paymentMethod === "upi" && (
-                <div>
-                  <Label htmlFor="upiId">UPI ID</Label>
-                  <Input
-                    id="upiId"
-                    type="text"
-                    placeholder="Enter UPI ID (e.g., user@paytm)"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    className="mt-1"
-                  />
+          {/* Due Amount Display - Only show for first time or partial collection */}
+          {(isFirstTimeCollection || isPartialCollection) && selectedPayment && selectedPayment.dueAmount > 0 && (
+            <div className="p-3 bg-gray-900 rounded-lg border border-gray-700">
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-gray-400">Outstanding Amount:</div>
+                <div className="text-lg font-semibold text-orange-500">
+                  {formatCurrency(selectedPayment.dueAmount)}
                 </div>
-              )}
-              
-              <div>
-                <Label htmlFor="notes">Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Add any additional information"
-                  value={paymentNotes}
-                  onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="mt-1"
-                />
               </div>
             </div>
+          )}
+          <div className="space-y-4">
+            {(isFirstTimeCollection || isPartialCollection) ? (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="amount">Payment Amount (₹)</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    placeholder="Enter payment amount"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    className="bg-black border-gray-600 text-white"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="payment-date">Payment Date</Label>
+                  <Input
+                    id="payment-date"
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="bg-black border-gray-600 text-white"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="method">Payment Method</Label>
+                  <select
+                    id="method"
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="upi">UPI</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                {paymentMethod === "upi" && (
+                  <div>
+                    <Label htmlFor="upiId">UPI ID</Label>
+                    <Input
+                      id="upiId"
+                      type="text"
+                      placeholder="Enter UPI ID (e.g., user@paytm)"
+                      value={upiId}
+                      onChange={(e) => setUpiId(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="p-4 bg-green-900/20 border border-green-600 rounded-lg">
+                <div className="text-sm text-green-400 font-medium mb-2">
+                  ✅ Payment Collected
+                </div>
+                <div className="text-sm text-gray-300">
+                  This payment has been collected on {selectedPayment && selectedPayment.paidDate && format(new Date(selectedPayment.paidDate), "MMMM d, yyyy")}
+                </div>
+                <div className="text-xs text-gray-400 mt-2">
+                  Check payment history for detailed transaction records.
+                </div>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Add any additional information"
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+                className="mt-1"
+              />
+            </div>
           </div>
-          
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
@@ -1026,66 +1391,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
               disabled={collectPaymentMutation.isPending}
               className="bg-blue-800 text-white hover:bg-blue-700 disabled:bg-gray-600"
             >
-              {collectPaymentMutation.isPending ? "Processing..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Settlement Dialog */}
-      <Dialog open={settlementDialog} onOpenChange={setSettlementDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Settle Due Payment</DialogTitle>
-            <DialogDescription>
-              {settlementPayment && (
-                <>
-                  Complete the settlement for {formatCurrency(settlementPayment.amount)} due on{" "}
-                  {format(new Date(settlementPayment.dueDate), "MMM d, yyyy")}
-                  <br />
-                  <span className="text-red-600 font-medium mt-1 block">
-                    Outstanding: {formatCurrency(settlementPayment.dueAmount || 0)}
-                  </span>
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="settlement-date">Settlement Date</Label>
-              <Input
-                id="settlement-date"
-                type="date"
-                value={settlementDate}
-                onChange={(e) => setSettlementDate(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="settlement-notes">Notes</Label>
-              <Textarea
-                id="settlement-notes"
-                placeholder="Add notes about the settlement (optional)"
-                value={settlementNotes}
-                onChange={(e) => setSettlementNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button
-              type="button"
-              onClick={handleSubmitSettlement}
-              disabled={settlementMutation.isPending}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              {settlementMutation.isPending ? "Settling..." : "Settle Due"}
+              {collectPaymentMutation.isPending ? "Processing..." : ((isFirstTimeCollection || isPartialCollection) ? "Save" : "Update Notes")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1126,6 +1432,66 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
               variant="destructive"
             >
               {deletePaymentMutation.isPending ? "Deleting..." : "Delete Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Payment Confirmation Dialog */}
+      <Dialog open={resetDialog} onOpenChange={(open) => {
+        setResetDialog(open);
+        if (!open) {
+          setResetConfirmation("");
+          setResetPayment(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-yellow-600">Reset Payment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reset this payment to its original state? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-300">
+              <p>This action will delete all payment history for this payment.</p>
+            </div>
+            <div>
+              <Label htmlFor="reset-confirmation" className="text-gray-300 font-medium text-sm">
+                Type "reset" to confirm:
+              </Label>
+              <Input
+                id="reset-confirmation"
+                type="text"
+                value={resetConfirmation}
+                onChange={(e) => setResetConfirmation(e.target.value)}
+                className="mt-1 bg-black border-gray-600 text-white focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={() => {
+                if (resetConfirmation === "reset") {
+                  if (resetPayment) {
+                    resetPaymentMutation.mutate(resetPayment.id);
+                  }
+                } else {
+                  toast({
+                    title: "Invalid Confirmation",
+                    description: 'Please type "reset" exactly to confirm this action.',
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={resetPaymentMutation.isPending || resetConfirmation !== "reset"}
+              variant="destructive"
+            >
+              {resetPaymentMutation.isPending ? "Resetting..." : "Confirm Reset"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -2,7 +2,8 @@ import { borrowers, type Borrower, type InsertBorrower,
          loans, type Loan, type InsertLoan,
          payments, type Payment, type InsertPayment, type UpdatePayment,
          users, type User, type CreateUser, type UpdateUser,
-         PaymentStatus, UserRole, loanItems, type LoanItem } from "@shared/schema";
+         PaymentStatus, UserRole, loanItems, type LoanItem,
+         paymentTransactions, type PaymentTransaction, type InsertPaymentTransaction } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, lt, gte, desc, isNull, sql } from "drizzle-orm";
 import { subMonths } from "date-fns";
@@ -63,6 +64,16 @@ export interface IStorage {
   createLoanItem(item: Omit<LoanItem, "id">): Promise<LoanItem>;
   deleteLoanItemsByLoanId(loanId: number): Promise<void>;
   updateLoanItemsForLoan(loanId: number, items: Omit<LoanItem, "id" | "loanId">[]): Promise<LoanItem[]>;
+
+  // Payment transaction operations
+  getPaymentTransactionsByPaymentId(paymentId: number): Promise<PaymentTransaction[]>;
+  createPaymentTransaction(transaction: InsertPaymentTransaction): Promise<PaymentTransaction>;
+  deletePaymentTransaction(id: number): Promise<boolean>;
+  updatePaymentTransaction(id: number, data: Partial<PaymentTransaction>): Promise<PaymentTransaction | undefined>;
+  resetPayment(id: number): Promise<Payment | undefined>;
+  
+  // Loan completion logic
+  checkAndMarkLoanCompleted(loanId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -383,23 +394,73 @@ export class DatabaseStorage implements IStorage {
       updateData.paidDate = typeof data.paidDate === 'string' ? data.paidDate : null;
     }
     
+    // Check if this is a note-only update for an already collected payment
+    const isNoteOnlyUpdate = data.paidAmount === undefined && 
+      data.paidDate === undefined && 
+      data.paymentMethod === undefined && 
+      data.notes !== undefined && 
+      currentPayment.paidAmount && currentPayment.paidAmount > 0;
+    
+    if (isNoteOnlyUpdate) {
+      // For note-only updates on already collected payments, just update the notes
+      updateData.notes = data.notes;
+      
+      // Log what we're updating for debugging
+      console.log("Updating notes for collected payment:", { id, updateData });
+      
+      const result = await db.update(payments)
+        .set(updateData)
+        .where(eq(payments.id, id))
+        .returning();
+      return result.length > 0 ? result[0] : undefined;
+    }
+    
     if (data.paidAmount !== undefined) {
       // Convert string amounts to numbers
-      const paidAmount = typeof data.paidAmount === 'string' 
+      const newPaidAmount = typeof data.paidAmount === 'string' 
         ? parseFloat(data.paidAmount) 
         : data.paidAmount;
-      
-      updateData.paidAmount = paidAmount;
-      
-      // Calculate due amount (outstanding balance)
+      // Accumulate with previous paidAmount
+      const previousPaidAmount = currentPayment.paidAmount || 0;
+      const totalPaidAmount = previousPaidAmount + newPaidAmount;
+      // Validate that total paid amount doesn't exceed the original EMI amount
       const originalAmount = currentPayment.amount;
-      const dueAmount = Math.max(0, originalAmount - paidAmount);
+      if (totalPaidAmount > originalAmount) {
+        throw new Error(`Payment amount cannot exceed EMI amount. EMI: ${originalAmount}, Already paid: ${previousPaidAmount}, New payment: ${newPaidAmount}, Total would be: ${totalPaidAmount}`);
+      }
+      updateData.paidAmount = totalPaidAmount;
+      // Calculate due amount (outstanding balance)
+      const dueAmount = Math.max(0, originalAmount - totalPaidAmount);
       updateData.dueAmount = dueAmount;
-      
       // If there's still a due amount, keep status as "due_soon" instead of "collected"
       if (dueAmount > 0) {
         updateData.status = PaymentStatus.DUE_SOON;
       }
+      
+      // Create a payment transaction record for this payment
+      await this.createPaymentTransaction({
+        paymentId: id,
+        amount: newPaidAmount,
+        paidDate: data.paidDate || new Date().toISOString().split('T')[0],
+        paymentMethod: data.paymentMethod,
+        notes: data.notes
+      });
+    } else if (data.status === "collected" && !currentPayment.paidAmount) {
+      // If payment is being marked as collected for the first time and no paidAmount provided,
+      // treat it as a full payment and create a transaction record
+      const originalAmount = currentPayment.amount;
+      updateData.paidAmount = originalAmount;
+      updateData.dueAmount = 0;
+      updateData.paidDate = data.paidDate || new Date().toISOString().split('T')[0];
+      
+      // Create a payment transaction record for the full payment
+      await this.createPaymentTransaction({
+        paymentId: id,
+        amount: originalAmount,
+        paidDate: data.paidDate || new Date().toISOString().split('T')[0],
+        paymentMethod: data.paymentMethod,
+        notes: data.notes
+      });
     }
     
     if (data.paymentMethod !== undefined) {
@@ -411,13 +472,21 @@ export class DatabaseStorage implements IStorage {
     }
     
     // Log what we're updating for debugging
-    console.log("Marking payment collected:", { id, updateData });
+    console.log("Marking payment collected (accumulating):", { id, updateData });
     
     const result = await db.update(payments)
       .set(updateData)
       .where(eq(payments.id, id))
       .returning();
-    return result.length > 0 ? result[0] : undefined;
+    
+    if (result.length > 0) {
+      // Check if loan should be marked as completed after this payment
+      const payment = result[0];
+      await this.checkAndMarkLoanCompleted(payment.loanId);
+      return payment;
+    }
+    
+    return undefined;
   }
 
   async deletePayment(id: number): Promise<boolean> {
@@ -744,6 +813,164 @@ export class DatabaseStorage implements IStorage {
       createdItems.push(created);
     }
     return createdItems;
+  }
+
+  // Payment transaction operations
+  async getPaymentTransactionsByPaymentId(paymentId: number): Promise<PaymentTransaction[]> {
+    return await db.select().from(paymentTransactions)
+      .where(eq(paymentTransactions.paymentId, paymentId))
+      .orderBy(desc(paymentTransactions.paidDate));
+  }
+
+  async createPaymentTransaction(transaction: InsertPaymentTransaction): Promise<PaymentTransaction> {
+    const [created] = await db.insert(paymentTransactions).values(transaction).returning();
+    return created;
+  }
+
+  async deletePaymentTransaction(id: number): Promise<boolean> {
+    const result = await db.delete(paymentTransactions).where(eq(paymentTransactions.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async updatePaymentTransaction(id: number, data: Partial<PaymentTransaction>): Promise<PaymentTransaction | undefined> {
+    // Fetch the transaction to get paymentId
+    const existing = await db.select().from(paymentTransactions).where(eq(paymentTransactions.id, id));
+    if (!existing.length) return undefined;
+    const paymentId = existing[0].paymentId;
+    // Get all other transactions for this payment
+    const otherTransactions = await db.select().from(paymentTransactions)
+      .where(and(eq(paymentTransactions.paymentId, paymentId), sql`id != ${id}`));
+    const otherTotal = otherTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+    // Get the parent payment
+    const payment = await db.select().from(payments).where(eq(payments.id, paymentId));
+    if (!payment.length) return undefined;
+    const originalAmount = payment[0].amount;
+    // The new amount for this transaction (if being updated)
+    const newAmount = data.amount !== undefined ? data.amount : existing[0].amount;
+    const newTotal = otherTotal + (newAmount || 0);
+    if (newTotal > originalAmount) {
+      throw new Error(`Total payment amount cannot exceed EMI amount. EMI: ${originalAmount}, Current total: ${otherTotal}, New amount: ${newAmount}, Total would be: ${newTotal}`);
+    }
+    // Proceed with update
+    const result = await db.update(paymentTransactions)
+      .set(data)
+      .where(eq(paymentTransactions.id, id))
+      .returning();
+    const updated = result.length > 0 ? result[0] : undefined;
+    if (updated) {
+      // Recalculate parent payment totals
+      const allTransactions = await db.select().from(paymentTransactions).where(eq(paymentTransactions.paymentId, paymentId));
+      const totalPaid = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+      const dueAmount = Math.max(0, originalAmount - totalPaid);
+      let status = 'collected';
+      if (dueAmount > 0 && totalPaid > 0) status = 'due_soon';
+      if (totalPaid === 0) status = 'upcoming';
+      await db.update(payments)
+        .set({
+          paidAmount: totalPaid,
+          dueAmount: dueAmount,
+          status: status
+        })
+        .where(eq(payments.id, paymentId));
+      
+      // Check if loan should be marked as completed after this transaction update
+      await this.checkAndMarkLoanCompleted(paymentId);
+    }
+    return updated;
+  }
+
+  async resetPayment(id: number): Promise<Payment | undefined> {
+    // Get the payment to verify it exists
+    const payment = await db.select().from(payments).where(eq(payments.id, id));
+    if (!payment.length) return undefined;
+    
+    // Delete all payment transactions for this payment
+    await db.delete(paymentTransactions).where(eq(paymentTransactions.paymentId, id));
+    
+    // Reset the payment to its original state
+    const result = await db.update(payments)
+      .set({
+        paidAmount: 0,
+        dueAmount: payment[0].amount, // Reset to original amount
+        status: 'upcoming',
+        paidDate: null,
+        paymentMethod: null,
+        notes: null
+      })
+      .where(eq(payments.id, id))
+      .returning();
+    
+    if (result.length > 0) {
+      // Check if loan completion status needs to be updated after reset
+      const payment = result[0];
+      await this.checkAndMarkLoanCompleted(payment.loanId);
+      return payment;
+    }
+    
+    return undefined;
+  }
+
+  async checkAndMarkLoanCompleted(loanId: number): Promise<boolean> {
+    try {
+      // Get the loan details
+      const loan = await this.getLoanById(loanId);
+      if (!loan) {
+        console.log(`Loan ${loanId} not found for completion check`);
+        return false;
+      }
+
+      // Skip if loan is already completed, defaulted, or cancelled
+      if (loan.status === 'completed' || loan.status === 'defaulted' || loan.status === 'cancelled') {
+        return false;
+      }
+
+      // Get all payments for this loan
+      const payments = await this.getPaymentsByLoanId(loanId);
+      if (payments.length === 0) {
+        console.log(`No payments found for loan ${loanId}`);
+        return false;
+      }
+
+      let shouldComplete = false;
+
+      if (loan.loanStrategy === 'emi') {
+        // For EMI loans: check if all payments are collected
+        const allPaymentsCollected = payments.every(payment => 
+          payment.status === 'collected' && payment.paidAmount && payment.paidAmount >= payment.amount
+        );
+        
+        if (allPaymentsCollected) {
+          console.log(`All payments collected for EMI loan ${loanId}, marking as completed`);
+          shouldComplete = true;
+        }
+      } else {
+        // For FLAT, CUSTOM, and GOLD_SILVER loans: check if total amount paid equals loan amount
+        const totalPaidAmount = payments.reduce((total, payment) => {
+          return total + (payment.paidAmount || 0);
+        }, 0);
+
+        const loanAmount = loan.amount;
+        
+        if (totalPaidAmount >= loanAmount) {
+          console.log(`Total amount paid (${totalPaidAmount}) >= loan amount (${loanAmount}) for ${loan.loanStrategy} loan ${loanId}, marking as completed`);
+          shouldComplete = true;
+        }
+      }
+
+      if (shouldComplete) {
+        // Update loan status to completed
+        const updatedLoan = await this.updateLoanStatus(loanId, 'completed');
+        if (updatedLoan) {
+          console.log(`Loan ${loanId} successfully marked as completed`);
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error(`Error checking loan completion for loan ${loanId}:`, error);
+      return false;
+    }
   }
 }
 
