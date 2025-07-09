@@ -479,7 +479,15 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
     } else if (dueDate.getTime() === today.getTime()) {
       return "due_today";
     } else {
-      return "upcoming";
+      // Check if due within 3 days
+      const threeDaysFromNow = new Date(today);
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      
+      if (dueDate <= threeDaysFromNow) {
+        return "due_soon";
+      } else {
+        return "upcoming";
+      }
     }
   };
 
@@ -492,6 +500,8 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         return <AlertCircle className="h-4 w-4 text-red-600" />;
       case "due_today":
         return <Clock className="h-4 w-4 text-orange-600" />;
+      case "due_soon":
+        return <Clock className="h-4 w-4 text-yellow-600" />;
       default:
         return <Clock className="h-4 w-4 text-blue-600" />;
     }
@@ -506,6 +516,8 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         return "bg-red-100 text-red-800";
       case "due_today":
         return "bg-orange-100 text-orange-800";
+      case "due_soon":
+        return "bg-yellow-100 text-yellow-800";
       default:
         return "bg-blue-100 text-blue-800";
     }
@@ -520,6 +532,8 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         return "Missed";
       case "due_today":
         return "Due Today";
+      case "due_soon":
+        return "Due Soon";
       default:
         return "Upcoming";
     }
@@ -681,28 +695,14 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
                       Add Payment
                     </Button>
                   ) : (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Payments
-                          <ChevronDown className="h-4 w-4 ml-2" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setShowAddSinglePayment(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Single Payment
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setShowAddBulkPayments(true)}>
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Add X Months
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button 
+                      size="sm"
+                      onClick={() => setShowAddBulkPayments(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Add X Months
+                    </Button>
                   )}
                 </div>
               </div>
