@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useLocation } from "wouter";
 import { LoanDetailsModal } from "@/components/borrowers/LoanDetailsModal";
+import { useMemo } from "react";
 
 const Payments = () => {
   const [activeTab, setActiveTab] = useState<"upcoming" | "collected" | "missed">("upcoming");
@@ -28,60 +29,78 @@ const Payments = () => {
   const [showLoanDetailsModal, setShowLoanDetailsModal] = useState(false);
   const [, navigate] = useLocation();
 
-  const { data: payments = [], isLoading } = useQuery({
+  const { data: payments = [], isLoading: paymentsLoading } = useQuery({
     queryKey: ["/api/payments"],
   });
 
-  const { data: borrowers = [] } = useQuery({
+  const { data: borrowers = [], isLoading: borrowersLoading } = useQuery({
     queryKey: ["/api/borrowers"],
   });
 
+  const { data: allLoans = [], isLoading: loansLoading } = useQuery<any[]>({
+    queryKey: ["/api/loans"],
+  });
+
+  const isLoading = paymentsLoading || borrowersLoading || loansLoading;
+
   // Generate missed payments with borrower and guarantor details
-  const getMissedPayments = () => {
-    if (!Array.isArray(payments) || !Array.isArray(borrowers)) return [];
-    
+  const missedPayments = useMemo(() => {
+    if (isLoading || !Array.isArray(payments)) return [];
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    const missedPayments: any[] = [];
-    
+
+    const missed: any[] = [];
+
     payments.forEach((payment: any) => {
       if (payment.status === "collected") return;
-      
+
       const dueDate = new Date(payment.dueDate);
       dueDate.setHours(0, 0, 0, 0);
-      
+
       if (dueDate >= today) return; // Not overdue yet
-      
-      const borrower = borrowers.find((b: any) => {
-        // Find borrower by matching payment's loan to borrower's loan
-        return b.loan?.id === payment.loanId;
-      });
-      
-      if (!borrower) return;
-      
+
+      const loanIdNum = Number(payment.loanId);
+      const loan = Array.isArray(allLoans) ? allLoans.find((l: any) => Number(l.id) === loanIdNum) : undefined;
+      const borrower = Array.isArray(borrowers) ? borrowers.find((b: any) => Number(b.id) === (loan ? loan.borrowerId : undefined)) : undefined;
+
       const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      missedPayments.push({
-        borrowerId: borrower.id,
-        borrowerName: borrower.name,
-        borrowerPhone: borrower.phone,
-        borrowerAddress: borrower.address,
-        guarantorName: borrower.guarantorName || 'N/A',
-        guarantorPhone: borrower.guarantorPhone || 'N/A',
-        guarantorAddress: borrower.guarantorAddress || 'N/A',
+
+      const borrowerName = borrower ? borrower.name : payment.borrower || "Unknown";
+      const borrowerPhone = borrower ? borrower.phone : payment.phone || "No contact";
+      const borrowerAddress = borrower ? borrower.address : "";
+      missed.push({
+        borrowerId: borrower ? borrower.id : null,
+        borrowerName,
+        borrowerPhone,
+        borrowerAddress,
+        guarantorName: loan ? loan.guarantorName || 'N/A' : 'N/A',
+        guarantorPhone: loan ? loan.guarantorPhone || 'N/A' : 'N/A',
+        guarantorAddress: loan ? loan.guarantorAddress || 'N/A' : 'N/A',
         amount: payment.amount,
         dueDate: payment.dueDate,
         daysOverdue: daysOverdue,
         paymentId: payment.id,
-        loanId: payment.loanId // <-- add this
+        loanId: loanIdNum,
+        loanType: loan ? loan.loanStrategy : payment.loanType || "EMI"
       });
     });
-    
-    return missedPayments.sort((a, b) => b.daysOverdue - a.daysOverdue);
-  };
 
-  const missedPayments = getMissedPayments();
+    return missed.sort((a, b) => b.daysOverdue - a.daysOverdue);
+  }, [payments, borrowers, allLoans, isLoading]);
+
+
+  const selectedLoan = useMemo(() => {
+    if (selectedLoanId === null || selectedLoanId === undefined) return null;
+    const found = allLoans.find((loan: any) => Number(loan.id) === Number(selectedLoanId));
+    if (found) return found;
+    // Return a stub loan object so that the modal can still fetch data and display loading state
+    return {
+      id: selectedLoanId,
+      loanStrategy: "emi",
+      status: "active",
+    } as any;
+  }, [selectedLoanId, allLoans]);
 
   const filteredPayments = Array.isArray(payments) ? payments.filter((payment: any) => {
     const matchesSearch = searchQuery === "" || 
@@ -461,7 +480,7 @@ const Payments = () => {
 
       {showLoanDetailsModal && (
         <LoanDetailsModal
-          loan={Array.isArray(payments) ? payments.find((p: any) => p.loanId === selectedLoanId) : null}
+          loan={selectedLoan}
           isOpen={showLoanDetailsModal}
           onClose={() => setShowLoanDetailsModal(false)}
         />
