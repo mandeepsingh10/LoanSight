@@ -117,6 +117,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   const { data: payments = [], isLoading: paymentsLoading } = useQuery({
     queryKey: ["/api/payments", "loan", loan?.id],
     queryFn: async () => {
+      console.log("Fetching payments for loan:", loan?.id);
       if (!loan) return [];
       const response = await apiRequest("GET", `/api/payments/loan/${loan.id}`);
       if (!response.ok) {
@@ -125,17 +126,51 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       const data = await response.json();
       
       // Sort payments by due date (earliest first)
-      return data.sort((a: Payment, b: Payment) => {
+      const sortedData = data.sort((a: Payment, b: Payment) => {
         return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
       });
+      
+      console.log("Fetched payments:", sortedData.length, "payments");
+      return sortedData;
     },
     enabled: isOpen && !!loan,
+    staleTime: 0, // Override the global staleTime to always refetch
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+  });
+
+  // Update selectedPaymentForHistory when payments data changes
+  useEffect(() => {
+    if (selectedPaymentForHistory && payments.length > 0) {
+      const updatedPayment = payments.find(p => p.id === selectedPaymentForHistory.id);
+      if (updatedPayment) {
+        setSelectedPaymentForHistory(updatedPayment);
+      }
+    }
+  }, [payments, selectedPaymentForHistory]);
+
+  // Fetch the specific payment for history dialog to ensure fresh data
+  const { data: currentPaymentForHistory } = useQuery({
+    queryKey: ["/api/payments", "loan", loan?.id, "history", selectedPaymentForHistory?.id],
+    queryFn: async () => {
+      if (!selectedPaymentForHistory) return null;
+      const response = await apiRequest("GET", `/api/payments/loan/${loan?.id}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch payments");
+      }
+      const data = await response.json();
+      return data.find((p: Payment) => p.id === selectedPaymentForHistory.id) || selectedPaymentForHistory;
+    },
+    enabled: historyDialog && !!selectedPaymentForHistory && !!loan,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // Fetch payment transactions for each payment
   const { data: paymentTransactionsMap = {}, isLoading: transactionsLoading } = useQuery({
-    queryKey: ["/api/payments/transactions", "loan", loan?.id, payments.length],
+    queryKey: ["/api/payments/transactions", "loan", loan?.id],
     queryFn: async () => {
+      console.log("Fetching payment transactions for loan:", loan?.id, "payments length:", payments.length);
       if (!loan || !payments.length) return {};
       
       const transactionsMap: { [paymentId: number]: any[] } = {};
@@ -148,6 +183,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
             if (response.ok) {
               const transactions = await response.json();
               transactionsMap[payment.id] = transactions;
+              console.log(`Fetched ${transactions.length} transactions for payment ${payment.id}`);
             }
           } catch (error) {
             console.error(`Failed to fetch transactions for payment ${payment.id}:`, error);
@@ -156,12 +192,15 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         }
       }
       
+      console.log("Final transactions map:", transactionsMap);
       return transactionsMap;
     },
     enabled: isOpen && !!loan && payments.length > 0,
     refetchOnWindowFocus: false,
     staleTime: 0, // Always refetch when payments change
     refetchOnMount: true, // Always refetch when component mounts
+    // Ensure this query refetches when payments change
+    refetchInterval: false,
   });
 
   // Add single payment mutation
@@ -174,7 +213,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Success",
         description: "Payment added successfully.",
@@ -185,7 +224,11 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         dueDate: format(new Date(), 'yyyy-MM-dd'),
         notes: ""
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      
+      // Add a small delay to ensure backend has processed the changes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      await invalidatePaymentQueries();
     },
     onError: (error) => {
       toast({
@@ -206,7 +249,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       });
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast({
         title: "Success",
         description: `Successfully added ${data.length} payment(s) to the schedule.`,
@@ -217,7 +260,11 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
         customAmount: "",
         customDueDate: format(new Date(), 'yyyy-MM-dd')
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      
+      // Add a small delay to ensure backend has processed the changes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      await invalidatePaymentQueries();
     },
     onError: (error) => {
       toast({
@@ -258,16 +305,11 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       setUpiId("");
       setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
       
-      // First invalidate payments query and wait for it to refetch
-      await queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      // Add a small delay to ensure backend has processed the changes
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Then invalidate payment transactions query to ensure it refetches with updated payment data
-      queryClient.invalidateQueries({ queryKey: ["/api/payments/transactions", "loan", loan?.id] });
-      
-      // Also refetch payment transactions for the specific payment that was just collected
-      if (selectedPayment) {
-        queryClient.invalidateQueries({ queryKey: ["/api/payments/" + selectedPayment.id + "/transactions"] });
-      }
+      // Invalidate all related queries to ensure UI updates
+      await invalidatePaymentQueries();
     },
     onError: (error) => {
       // Extract user-friendly error message
@@ -301,7 +343,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       }
       return { success: true };
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Payment Deleted",
         description: "Payment has been successfully deleted.",
@@ -310,7 +352,11 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       setDeleteDialog(false);
       setDeletePayment(null);
       
-      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
+      // Add a small delay to ensure backend has processed the changes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Invalidate all related queries
+      await invalidatePaymentQueries();
     },
     onError: (error) => {
       toast({
@@ -331,7 +377,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Payment Reset",
         description: "Payment has been successfully reset to its original state.",
@@ -342,9 +388,11 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       setResetPayment(null);
       setResetConfirmation("");
       
+      // Add a small delay to ensure backend has processed the changes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Invalidate and refetch queries to update the UI
-      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/payments/transactions", "loan", loan?.id] });
+      await invalidatePaymentQueries();
     },
     onError: (error) => {
       toast({
@@ -385,6 +433,69 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   });
 
   const queryClient = useQueryClient();
+  
+  // Helper function to invalidate all payment-related queries
+  const invalidatePaymentQueries = async () => {
+    console.log("Invalidating payment queries for loan:", loan?.id);
+    console.log("Current payments length:", payments.length);
+    
+    // First invalidate all related queries
+    await Promise.all([
+      // Invalidate payments query
+      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan?.id] }),
+      // Invalidate payment transactions query with exact match
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/payments/transactions", "loan", loan?.id],
+        exact: true 
+      }),
+      // Invalidate payment transactions query with partial match (for any payments.length)
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/payments/transactions", "loan", loan?.id],
+        exact: false 
+      }),
+      // Invalidate specific payment transactions if a payment was selected
+      selectedPayment ? queryClient.invalidateQueries({ 
+        queryKey: ["/api/payments/" + selectedPayment.id + "/transactions"],
+        exact: false 
+      }) : Promise.resolve(),
+      // Invalidate dashboard queries that might show payment data
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/upcoming-payments"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] }),
+      // Invalidate borrower loans query to update loan status
+      loan?.borrowerId ? queryClient.invalidateQueries({ 
+        queryKey: ["/api/loans/borrower/" + loan.borrowerId] 
+      }) : Promise.resolve(),
+      // Invalidate general payments queries
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] }),
+      // Invalidate history query
+      selectedPaymentForHistory ? queryClient.invalidateQueries({ 
+        queryKey: ["/api/payments", "loan", loan?.id, "history", selectedPaymentForHistory.id],
+        exact: false 
+      }) : Promise.resolve(),
+    ]);
+    
+    // Then force refetch the critical queries
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ["/api/payments", "loan", loan?.id] }),
+      queryClient.refetchQueries({ queryKey: ["/api/payments/transactions", "loan", loan?.id] }),
+    ]);
+    
+    // Also refetch dashboard queries
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ["/api/dashboard/upcoming-payments"] }),
+      queryClient.refetchQueries({ queryKey: ["/api/dashboard/stats"] }),
+    ]);
+    
+    // Refetch history query if needed
+    if (selectedPaymentForHistory) {
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/payments", "loan", loan?.id, "history", selectedPaymentForHistory.id] 
+      });
+    }
+    
+    console.log("Payment queries invalidated and refetched successfully");
+  };
+  
   const editTransactionMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number, data: any }) => {
       const response = await apiRequest("PATCH", `/api/payment-transactions/${id}`, data);
@@ -394,13 +505,22 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
       }
       return response.json();
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: async (_data, variables) => {
       setEditingTransactionId(null);
       setEditTransactionForm({ amount: '', paidDate: '', paymentMethod: '', notes: '', upiId: '' });
       toast({ title: "Transaction updated", description: "Payment transaction updated successfully." });
-      // Refetch payment history for the selected payment
+      
+      // Add a small delay to ensure backend has processed the changes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Invalidate all related queries
+      await invalidatePaymentQueries();
+      
+      // Force refetch the specific payment data for the history dialog
       if (selectedPaymentForHistory) {
-        queryClient.invalidateQueries({ queryKey: ["/api/payments/" + selectedPaymentForHistory.id + "/transactions"] });
+        await queryClient.refetchQueries({ 
+          queryKey: ["/api/payments", "loan", loan?.id] 
+        });
       }
     },
     onError: (error: any) => {
@@ -411,6 +531,15 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
   useEffect(() => {
     setNotes(loan?.notes || "");
   }, [loan]);
+
+  // Force refetch when modal opens
+  useEffect(() => {
+    if (isOpen && loan) {
+      console.log("Modal opened, forcing refetch for loan:", loan.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/payments", "loan", loan.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/transactions", "loan", loan.id] });
+    }
+  }, [isOpen, loan, queryClient]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -600,9 +729,14 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
     setDeleteDialog(true);
   };
 
-  const handleViewHistory = (payment: Payment) => {
+  const handleViewHistory = async (payment: Payment) => {
     setSelectedPaymentForHistory(payment);
     setHistoryDialog(true);
+    
+    // Force refetch payment data to ensure we have the latest information
+    await queryClient.refetchQueries({ 
+      queryKey: ["/api/payments", "loan", loan?.id] 
+    });
   };
 
   const confirmDeletePayment = () => {
@@ -933,29 +1067,29 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
           <DialogHeader>
             <DialogTitle>Payment History</DialogTitle>
             <DialogDescription>
-              Complete payment history for EMI due on {selectedPaymentForHistory && format(new Date(selectedPaymentForHistory.dueDate), "MMMM d, yyyy")}
+              Complete payment history for EMI due on {(currentPaymentForHistory || selectedPaymentForHistory) && format(new Date((currentPaymentForHistory || selectedPaymentForHistory).dueDate), "MMMM d, yyyy")}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            {selectedPaymentForHistory && (
+            {(currentPaymentForHistory || selectedPaymentForHistory) && (
               <>
-                <div className={`grid grid-cols-2 gap-4 p-4 bg-gray-900 rounded-lg border-2 ${selectedPaymentForHistory.dueAmount && selectedPaymentForHistory.dueAmount > 0 ? 'border-red-500' : 'border-green-500'}`}>
+                <div className={`grid grid-cols-2 gap-4 p-4 bg-gray-900 rounded-lg border-2 ${(currentPaymentForHistory || selectedPaymentForHistory).dueAmount && (currentPaymentForHistory || selectedPaymentForHistory).dueAmount > 0 ? 'border-red-500' : 'border-green-500'}`}>
                   <div>
                     <div className="text-sm text-gray-400">EMI Amount</div>
-                    <div className="text-lg font-semibold text-white">{formatCurrency(selectedPaymentForHistory.amount)}</div>
+                    <div className="text-lg font-semibold text-white">{formatCurrency((currentPaymentForHistory || selectedPaymentForHistory).amount)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-400">Outstanding Dues</div>
-                    <div className="text-lg font-semibold text-orange-500">{formatCurrency(selectedPaymentForHistory.dueAmount || 0)}</div>
+                    <div className="text-lg font-semibold text-orange-500">{formatCurrency((currentPaymentForHistory || selectedPaymentForHistory).dueAmount || 0)}</div>
                   </div>
                 </div>
                 
-                {paymentTransactionsMap[selectedPaymentForHistory.id] && paymentTransactionsMap[selectedPaymentForHistory.id].length > 0 ? (
+                {paymentTransactionsMap[(currentPaymentForHistory || selectedPaymentForHistory).id] && paymentTransactionsMap[(currentPaymentForHistory || selectedPaymentForHistory).id].length > 0 ? (
                   <div className="space-y-3">
                     <div className="text-sm font-medium text-gray-300">Payment Records</div>
                     <div className="space-y-2">
-                      {paymentTransactionsMap[selectedPaymentForHistory.id].map((transaction: any, index: number) => (
+                      {paymentTransactionsMap[(currentPaymentForHistory || selectedPaymentForHistory).id].map((transaction: any, index: number) => (
                         <div key={transaction.id} className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg border border-gray-600 shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden">
                           {/* Sequence Number Header */}
                           <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-3 py-1.5 border-b border-gray-600">
