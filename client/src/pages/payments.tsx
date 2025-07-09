@@ -298,53 +298,41 @@ const Payments = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Borrower Details</TableHead>
-                      <TableHead>Guarantor Details</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Due Date</TableHead>
+                      <TableHead>Borrower</TableHead>
+                      <TableHead>Contact Details</TableHead>
+                      <TableHead>Loan Type</TableHead>
+                      <TableHead className="w-36">Due Date</TableHead>
                       <TableHead>Days Overdue</TableHead>
-                      <TableHead>Action</TableHead>
+                      <TableHead>Amount</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredMissedPayments.map((payment: any, index: number) => (
                       <TableRow key={`${payment.borrowerId}-${payment.dueDate}-${index}`}>
                         <TableCell>
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white mr-3">
-                              <User className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-white">{payment.borrowerName}</div>
-                              <div className="text-sm text-gray-300 flex items-center mt-1">
-                                <Phone className="h-3 w-3 mr-1" />
-                                {payment.borrowerPhone}
-                              </div>
-                              <div className="text-sm text-gray-400 flex items-center mt-1">
-                                <MapPin className="h-3 w-3 mr-1" />
-                                {payment.borrowerAddress}
-                              </div>
-                            </div>
+                          <div className="flex items-center space-x-2">
+                            <User className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium text-white">{payment.borrowerName || "Unknown"}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <div className="text-sm font-medium text-white">{payment.guarantorName}</div>
-                            <div className="text-sm text-gray-300 flex items-center mt-1">
-                              <Phone className="h-3 w-3 mr-1" />
-                              {payment.guarantorPhone}
-                            </div>
-                            <div className="text-sm text-gray-400 flex items-center mt-1">
-                              <MapPin className="h-3 w-3 mr-1" />
-                              {payment.guarantorAddress}
-                            </div>
+                          <div className="flex items-center space-x-2">
+                            <Phone className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm text-gray-300">{payment.borrowerPhone || "No contact"}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm font-medium text-white">
-                          {formatCurrency(payment.amount)}
+                        <TableCell>
+                          <Badge variant="outline" className="border-gray-600 text-white">
+                            {payment.loanType || "EMI"}
+                          </Badge>
                         </TableCell>
-                        <TableCell className="text-sm text-white">
-                          {formatDate(payment.dueDate)}
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-4 w-4 text-gray-400" />
+                            <span className="text-white">
+                              {formatDate(payment.dueDate)}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="destructive">
@@ -352,14 +340,9 @@ const Payments = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-gray-600 text-white hover:bg-gray-800"
-                            onClick={() => setSelectedBorrower(payment.borrowerId)}
-                          >
-                            View Details
-                          </Button>
+                          <span className="font-medium text-white">
+                            {formatCurrency(payment.amount)}
+                          </span>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -381,7 +364,6 @@ const Payments = () => {
                       <TableHead>Loan Type</TableHead>
                       <TableHead className="w-36">Due Date</TableHead>
                       <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                 <TableBody>
@@ -416,9 +398,6 @@ const Payments = () => {
                         <span className="font-medium text-white">
                           {formatCurrency(payment.amount)}
                         </span>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(payment.status)}
                       </TableCell>
                     </TableRow>
                   ))}
