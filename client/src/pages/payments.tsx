@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Clock, CheckCircle, User, Phone, Calendar, AlertTriangle, MapPin } from "lucide-react";
+import { Search, Clock, CheckCircle, User, Phone, Calendar, AlertTriangle, MapPin, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,8 @@ import { format } from "date-fns";
 import { BorrowerDetails } from "@/components/borrowers/BorrowerDetails";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useLocation } from "wouter";
+import { LoanDetailsModal } from "@/components/borrowers/LoanDetailsModal";
 
 const Payments = () => {
   const [activeTab, setActiveTab] = useState<"upcoming" | "collected" | "missed">("upcoming");
@@ -22,6 +24,9 @@ const Payments = () => {
   });
   const [selectedBorrower, setSelectedBorrower] = useState<number | null>(null);
   const [showAllData, setShowAllData] = useState(false);
+  const [selectedLoanId, setSelectedLoanId] = useState<number | null>(null);
+  const [showLoanDetailsModal, setShowLoanDetailsModal] = useState(false);
+  const [, navigate] = useLocation();
 
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["/api/payments"],
@@ -68,7 +73,8 @@ const Payments = () => {
         amount: payment.amount,
         dueDate: payment.dueDate,
         daysOverdue: daysOverdue,
-        paymentId: payment.id
+        paymentId: payment.id,
+        loanId: payment.loanId // <-- add this
       });
     });
     
@@ -304,6 +310,7 @@ const Payments = () => {
                       <TableHead className="w-36">Due Date</TableHead>
                       <TableHead>Days Overdue</TableHead>
                       <TableHead>Amount</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -343,6 +350,19 @@ const Payments = () => {
                           <span className="font-medium text-white">
                             {formatCurrency(payment.amount)}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedLoanId(payment.loanId);
+                              setShowLoanDetailsModal(true);
+                            }}
+                            title="View Payment Schedule"
+                          >
+                            <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -436,6 +456,14 @@ const Payments = () => {
           onClose={() => setSelectedBorrower(null)}
           fullScreen={false}
           readOnly={false}
+        />
+      )}
+
+      {showLoanDetailsModal && (
+        <LoanDetailsModal
+          loan={Array.isArray(payments) ? payments.find((p: any) => p.loanId === selectedLoanId) : null}
+          isOpen={showLoanDetailsModal}
+          onClose={() => setShowLoanDetailsModal(false)}
         />
       )}
     </div>
