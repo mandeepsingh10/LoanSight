@@ -423,9 +423,14 @@ export class DatabaseStorage implements IStorage {
       // Accumulate with previous paidAmount
       const previousPaidAmount = currentPayment.paidAmount || 0;
       const totalPaidAmount = previousPaidAmount + newPaidAmount;
-      // Validate that total paid amount doesn't exceed the original EMI amount
       const originalAmount = currentPayment.amount;
-      if (totalPaidAmount > originalAmount) {
+
+      // Fetch the loan to check its strategy
+      const loan = await this.getLoanById(currentPayment.loanId);
+      const isFlatLoan = loan && loan.loanStrategy === 'flat';
+
+      // Only restrict for non-flat loans
+      if (!isFlatLoan && totalPaidAmount > originalAmount) {
         throw new Error(`Payment amount cannot exceed EMI amount. EMI: ${originalAmount}, Already paid: ${previousPaidAmount}, New payment: ${newPaidAmount}, Total would be: ${totalPaidAmount}`);
       }
       updateData.paidAmount = totalPaidAmount;
@@ -436,7 +441,6 @@ export class DatabaseStorage implements IStorage {
       if (dueAmount > 0) {
         updateData.status = PaymentStatus.DUE_SOON;
       }
-      
       // Create a payment transaction record for this payment
       await this.createPaymentTransaction({
         paymentId: id,
