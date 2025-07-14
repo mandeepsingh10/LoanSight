@@ -94,6 +94,31 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
     },
   });
 
+  // Mutation for marking loan as completed
+  const markCompletedMutation = useMutation({
+    mutationFn: async (loanId: number) => {
+      const response = await apiRequest("PATCH", `/api/loans/${loanId}`, { status: "completed" });
+      if (!response.ok) {
+        throw new Error("Failed to mark loan as completed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/borrowers", borrowerId, "loans"] });
+      toast({
+        title: "Loan Completed",
+        description: "The loan has been marked as completed.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to mark loan as completed: ${error}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Filter loans based on active tab
   const getFilteredLoans = () => {
     switch (activeTab) {
@@ -337,6 +362,18 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
                             onClick={() => setConfirmDeleteLoan(loan.id)}
                           >
                             <Trash2 size={16} className="text-red-500 hover:text-red-400" />
+                          </Button>
+                        )}
+                        {/* Mark as Completed button for eligible loans */}
+                        {isAdmin && !["completed", "defaulted", "cancelled"].includes(loan.status) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Mark as Completed"
+                            onClick={() => markCompletedMutation.mutate(loan.id)}
+                            disabled={markCompletedMutation.isLoading}
+                          >
+                            <CheckCircle size={16} className="text-green-500 hover:text-green-400" />
                           </Button>
                         )}
                       </div>
