@@ -942,24 +942,12 @@ export class DatabaseStorage implements IStorage {
         const allPaymentsCollected = payments.every(payment => 
           payment.status === 'collected' && payment.paidAmount && payment.paidAmount >= payment.amount
         );
-        
         if (allPaymentsCollected) {
           console.log(`All payments collected for EMI loan ${loanId}, marking as completed`);
           shouldComplete = true;
         }
-      } else {
-        // For FLAT, CUSTOM, and GOLD_SILVER loans: check if total amount paid equals loan amount
-        const totalPaidAmount = payments.reduce((total, payment) => {
-          return total + (payment.paidAmount || 0);
-        }, 0);
-
-        const loanAmount = loan.amount;
-        
-        if (totalPaidAmount >= loanAmount) {
-          console.log(`Total amount paid (${totalPaidAmount}) >= loan amount (${loanAmount}) for ${loan.loanStrategy} loan ${loanId}, marking as completed`);
-          shouldComplete = true;
-        }
       }
+      // For flat, custom, and gold_silver loans, do not mark as completed automatically
 
       if (shouldComplete) {
         // Update loan status to completed

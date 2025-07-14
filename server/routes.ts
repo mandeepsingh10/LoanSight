@@ -680,7 +680,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status = nextPayment.status;
           }
         } else {
-          status = 'Completed';
+          // For EMI loans, set status to 'Completed' if all payments are collected
+          if (latestLoan.loanStrategy === 'emi') {
+            status = 'Completed';
+          } else {
+            // For flat, custom, and gold_silver loans, use the actual loan.status field
+            status = latestLoan.status === 'completed' ? 'Completed' : 'Active';
+          }
         }
         
         return {
