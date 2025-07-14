@@ -44,6 +44,8 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
   const [activeTab, setActiveTab] = useState<"active" | "completed" | "defaulted" | "all">("all");
   const [confirmDeleteLoan, setConfirmDeleteLoan] = useState<number | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [confirmCompleteLoan, setConfirmCompleteLoan] = useState<number | null>(null);
+  const [completeConfirmText, setCompleteConfirmText] = useState("");
   const { toast } = useToast();
   const { isAdmin } = useAuth();
 
@@ -370,7 +372,10 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
                             variant="ghost"
                             size="icon"
                             title="Mark as Completed"
-                            onClick={() => markCompletedMutation.mutate(loan.id)}
+                            onClick={() => {
+                              setConfirmCompleteLoan(loan.id);
+                              setCompleteConfirmText("");
+                            }}
                             disabled={markCompletedMutation.isLoading}
                           >
                             <CheckCircle size={16} className="text-green-500 hover:text-green-400" />
@@ -418,6 +423,49 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
               disabled={deleteConfirmText.toLowerCase() !== 'delete'}
             >
               Delete Loan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Mark as Completed Confirmation Dialog */}
+      <AlertDialog open={confirmCompleteLoan !== null} onOpenChange={() => { setConfirmCompleteLoan(null); setCompleteConfirmText(""); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark Loan as Completed</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark this loan as <b>completed</b>. This action cannot be undone.<br/>
+              To confirm, type <b>complete</b> below:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <input
+              type="text"
+              value={completeConfirmText}
+              onChange={(e) => setCompleteConfirmText(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              placeholder="Type 'complete' to confirm"
+              autoComplete="off"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setConfirmCompleteLoan(null); setCompleteConfirmText(""); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmCompleteLoan && completeConfirmText.toLowerCase() === 'complete') {
+                  markCompletedMutation.mutate(confirmCompleteLoan);
+                  setConfirmCompleteLoan(null);
+                  setCompleteConfirmText("");
+                }
+              }}
+              className={
+                completeConfirmText.toLowerCase() === 'complete'
+                  ? 'bg-green-500 hover:bg-green-600'
+                  : 'bg-gray-400 cursor-not-allowed'
+              }
+              disabled={completeConfirmText.toLowerCase() !== 'complete'}
+            >
+              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
