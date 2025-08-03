@@ -23,20 +23,27 @@ _No changes yet_
 ### Fixed
 - Badge counts for Cash vs Gold & Silver tabs when borrowers have multiple loan types.
 - Duplicate `getLoanStrategyDisplay` definition removed to prevent ReferenceError.
-- Corrected payment schedule generation for EMI and FLAT loans when the loan start date falls on the 29-31st and the following month has fewer days (e.g., 31 Jan → 28/29 Feb).
+- **Issue #5 – Document Number Not Saving**: Fixed Aadhar/document numbers not persisting when editing borrower details. The issue was caused by intentional exclusions in three layers:
+  - Frontend mutation was excluding `documentNumber` from update data
+  - Backend schema validation was omitting `documentNumber` from `updateBorrowerSchema`
+  - Backend storage layer was excluding `documentNumber` from `updateBorrower` function
+- **Issue #6 – Document Number Layout**: Fixed document number display alignment to keep label and value on the same line with consistent spacing across all personal detail fields.
+- **Issue #7 – End-of-Month Payment Schedule Fix**: Corrected payment schedule generation for EMI and FLAT loans when the loan start date falls on the 29-31st and the following month has fewer days (e.g., 31 Jan → 28/29 Feb).
 
 ### Technical Details
 
 #### Files Modified
 1. `client/src/pages/borrowers.tsx`
 2. `client/src/components/borrowers/BorrowerTable.tsx`
-3. `server/storage.ts`
+3. `client/src/components/borrowers/BorrowerDetails.tsx`
+4. `shared/schema.ts`
+5. `server/storage.ts`
 
 #### Schema Changes
-- ❌ None (frontend-only changes)
+- ✅ Modified `updateBorrowerSchema` to allow `documentNumber` updates
 
 #### Backup/Restore Impact
-- ❌ None
+- ❌ None (existing data remains unchanged)
 
 #### Key Logic Changes
 
@@ -126,9 +133,70 @@ const lastDay = new Date(paymentDate.getFullYear(), paymentDate.getMonth()+1, 0)
 paymentDate.setDate(Math.min(anchorDay, lastDay)); // 31 Jan -> 28/29 Feb
 ```
 
+---
+
+### Issue #5 – Document Number Not Saving
+
+**Files Modified**
+1. `client/src/components/borrowers/BorrowerDetails.tsx`
+2. `shared/schema.ts`
+3. `server/storage.ts`
+
+**Before:**
+```typescript
+// Frontend: excluded documentNumber from mutation
+const { documentNumber, ...updateData } = data;
+
+// Backend schema: omitted documentNumber
+export const updateBorrowerSchema = createInsertSchema(borrowers)
+  .omit({ id: true, documentNumber: true }).partial();
+
+// Backend storage: excluded documentNumber from updates
+const { id: borrowerId, documentNumber, ...updateData } = borrower as any;
+```
+
+**After:**
+```typescript
+// Frontend: include documentNumber in mutation
+const response = await apiRequest("PUT", `/api/borrowers/${borrowerId}`, data);
+
+// Backend schema: allow documentNumber updates
+export const updateBorrowerSchema = createInsertSchema(borrowers)
+  .omit({ id: true }).partial();
+
+// Backend storage: include documentNumber in allowed fields
+if (updateData.documentNumber !== undefined) allowedFields.documentNumber = updateData.documentNumber;
+```
+
+---
+
+### Issue #6 – Document Number Layout
+
+**Files Modified**
+1. `client/src/components/borrowers/BorrowerDetails.tsx`
+
+**Before:**
+```typescript
+<div className="flex">
+  <dt className="text-gray-400 w-32">Document Number:</dt>
+  <dd className="text-white">{borrower.documentNumber}</dd>
+</div>
+```
+
+**After:**
+```typescript
+<div className="flex items-start">
+  <dt className="text-gray-400 w-36 flex-shrink-0">Document Number:</dt>
+  <dd className="text-white break-all">{borrower.documentNumber}</dd>
+</div>
+```
+
 **Changes Made:**
-- Added anchorDay & clamped dates to last day of month for EMI and FLAT strategies.
-- Prevents skipped months when start date is 29-31 and next month is shorter.
+- Fixed three-layer exclusion of document numbers preventing Aadhar updates
+- Improved field alignment with consistent spacing and proper text wrapping
+- Updated card styling to match dashboard design with hover effects and separators
+- Enhanced edit mode UX by removing hover effects during active editing
+- Fixed end-of-month payment schedule generation to prevent skipped months
 
 ## [2025-08-03] - Defaulter Logic Fixes & Dashboard Total Amount Update
 
@@ -149,23 +217,32 @@ paymentDate.setDate(Math.min(anchorDay, lastDay)); // 31 Jan -> 28/29 Feb
 
 ### Technical Details
 
-#### Files Modified:
+#### Files Modified
 1. `client/src/pages/defaulters-new.tsx`
 2. `client/src/components/dashboard/RecentDefaulters.tsx`
 3. `client/src/components/borrowers/BorrowerTable.tsx`
 4. `client/src/components/borrowers/LoanHistory.tsx`
 5. `client/src/pages/defaulters.tsx`
-6. `server/storage.ts` - Updated dashboard total amount calculation
+6. `server/storage.ts`
 
-#### Schema Changes:
+#### Schema Changes
 - ❌ None (frontend-only changes)
 
-#### Backup/Restore Impact:
+#### Backup/Restore Impact
 - ❌ None (frontend-only changes)
 
-#### Key Logic Changes:
+#### Key Logic Changes
 
-**Issue #1 - Defaulted Loans Not Removed from Defaulter Lists:**
+---
+
+### Issue #1 - Defaulted Loans Not Removed from Defaulter Lists
+
+**Files Modified**
+1. `client/src/pages/defaulters-new.tsx`
+2. `client/src/components/dashboard/RecentDefaulters.tsx`
+3. `client/src/components/borrowers/BorrowerTable.tsx`
+4. `client/src/components/borrowers/LoanHistory.tsx`
+5. `client/src/pages/defaulters.tsx`
 
 **Before:**
 ```typescript
@@ -192,11 +269,16 @@ payments.forEach((payment: any) => {
 });
 ```
 
-**Changes Made:**
-- Added loan status checks to exclude completed loans from defaulter lists
-- Modified defaulter detection logic to consider loan completion status
+---
 
-**Issue #2 - Defaulter Status Priority Logic:**
+### Issue #2 - Defaulter Status Priority Logic
+
+**Files Modified**
+1. `client/src/pages/defaulters-new.tsx`
+2. `client/src/components/dashboard/RecentDefaulters.tsx`
+3. `client/src/components/borrowers/BorrowerTable.tsx`
+4. `client/src/components/borrowers/LoanHistory.tsx`
+5. `client/src/pages/defaulters.tsx`
 
 **Before:**
 ```typescript
@@ -230,13 +312,12 @@ payments.forEach((payment: any) => {
 });
 ```
 
-**Changes Made:**
-- Changed logic to prioritize defaulter status over completed status
-- Updated defaulter detection to include borrowers who have any defaulted loans
-- Modified the condition to only exclude completed loans that are not also defaulted
-- Updated all defaulter-related components to use consistent logic
+---
 
-**Issue #3 - Dashboard Total Amount Calculation:**
+### Issue #3 - Dashboard Total Amount Calculation
+
+**Files Modified**
+1. `server/storage.ts`
 
 **Before:**
 ```typescript
@@ -257,12 +338,14 @@ for (const loan of allLoans) {
 ```
 
 **Changes Made:**
+- Added loan status checks to exclude completed loans from defaulter lists
+- Modified defaulter detection logic to consider loan completion status
+- Changed logic to prioritize defaulter status over completed status
+- Updated defaulter detection to include borrowers who have any defaulted loans
+- Modified the condition to only exclude completed loans that are not also defaulted
+- Updated all defaulter-related components to use consistent logic
 - Modified `getDashboardStats()` function to exclude completed loans from total amount
 - Updated total amount calculation to only include active, defaulted, and cancelled loans
-
-#### Code Examples:
-
-*Note: Code examples are now included in the "Key Logic Changes" section above for each issue.*
 
 #### Result:
 - ✅ When a loan is marked as "completed", it will not be shown as "defaulted"
