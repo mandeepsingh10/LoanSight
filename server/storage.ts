@@ -548,7 +548,10 @@ export class DatabaseStorage implements IStorage {
     let totalAmount = 0;
     
     for (const loan of allLoans) {
-      totalAmount += loan.amount;
+      // Exclude completed loans from total amount calculation
+      if (loan.status !== 'completed') {
+        totalAmount += loan.amount;
+      }
       
       const loanPayments = await db.select().from(payments)
         .where(
