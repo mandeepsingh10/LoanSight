@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Search filter dropdown on Borrowers page with options: **Borrower** (default), All Fields, Guarantor, Borrower Address, Guarantor Address.
+- Highlight logic respects selected filter; only relevant fields are highlighted.
+- Per-column sorting on Borrowers table (Borrower, Loan Amount, Start Date, Loan Type, Status).
+
+### Changed
+- Badge counts and debug banners now show correct counts per tab and per filter, including total match count for **All Fields** search.
+- Filter dropdown styled with modern translucent gray background and focus ring; placed inside the search input on the right.
+
+### Fixed
+- Badge counts for Cash vs Gold & Silver tabs when borrowers have multiple loan types.
+- Duplicate `getLoanStrategyDisplay` definition removed to prevent ReferenceError.
+
+### Technical Details
+
+#### Files Modified
+1. `client/src/pages/borrowers.tsx`
+2. `client/src/components/borrowers/BorrowerTable.tsx`
+
+#### Schema Changes
+- ❌ None (frontend-only changes)
+
+#### Backup/Restore Impact
+- ❌ None
+
 ## [2024-12-19] - Defaulter Logic Fixes & Dashboard Total Amount Update
 
 ### Added
