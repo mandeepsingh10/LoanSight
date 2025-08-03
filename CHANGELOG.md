@@ -23,12 +23,14 @@ _No changes yet_
 ### Fixed
 - Badge counts for Cash vs Gold & Silver tabs when borrowers have multiple loan types.
 - Duplicate `getLoanStrategyDisplay` definition removed to prevent ReferenceError.
+- Corrected payment schedule generation for EMI and FLAT loans when the loan start date falls on the 29-31st and the following month has fewer days (e.g., 31 Jan → 28/29 Feb).
 
 ### Technical Details
 
 #### Files Modified
 1. `client/src/pages/borrowers.tsx`
 2. `client/src/components/borrowers/BorrowerTable.tsx`
+3. `server/storage.ts`
 
 #### Schema Changes
 - ❌ None (frontend-only changes)
@@ -38,38 +40,31 @@ _No changes yet_
 
 #### Key Logic Changes
 
-**Issue #1 – Search Filter Dropdown & Field-Aware Highlighting**
+---
+
+### Issue #1 – Search Filter Dropdown & Field-Aware Highlighting
+
+**Files Modified**
+1. `client/src/pages/borrowers.tsx`
 
 **Before:**
 ```typescript
-// borrowers.tsx (simplified)
-const [searchQuery, setSearchQuery] = useState("");
-
-// A single search input – always searched every field
-const searchableText = [
-  borrower.name,
-  borrower.phone,
-  borrower.address,
-  borrower.guarantorName,
-  borrower.guarantorAddress
-].join(" ").toLowerCase();
-
+// Single search across every field
+const searchableText = [...allFields].join(" ").toLowerCase();
 return searchableText.includes(searchTerm);
 
-// highlightText always applied
+// highlightText always active
 highlightText(borrower.address, searchQuery);
 ```
 
 **After:**
 ```typescript
-// Added filter state & dropdown (default "borrower")
+// Added filter state & dropdown (default = "borrower")
 const [searchFilter, setSearchFilter] = useState("borrower");
 
-// Filter-specific match logic
+// Field-specific matching
 if (searchFilter === "borrower") {
   return (borrower.name || "").toLowerCase().includes(searchTerm);
-} else if (searchFilter === "guarantor_address") {
-  return (borrower.guarantorAddress || "").toLowerCase().includes(searchTerm);
 }
 
 // Field-aware highlighting helper
@@ -77,47 +72,63 @@ const highlightField = (text, category) => {
   const allow = searchFilter === "all" || searchFilter === category;
   return highlightText(text, allow ? searchQuery : "");
 };
-
-// Usage
-highlightField(borrower.address, "borrower_address");
 ```
 
-**Issue #2 – Accurate Badge Counts & Debug Text**
+---
 
-**Before:** counts were based on unique borrowers; badges mis-matched when borrowers had loans in both categories.
+### Issue #2 – Accurate Badge Counts & Debug Text
+
+**Files Modified**
+1. `client/src/pages/borrowers.tsx`
+
+**Before:** counts were based on unique borrowers – badges were wrong when a borrower had loans in multiple categories.
 
 **After:**
 ```typescript
-// borrowers.tsx (excerpt)
-const cashResults = /* counts occurrences per field when filter==='all' */
-const goldResults = /* same for gold-silver */
-
-<span>{cashResults}</span>
-<div>Found {cashResults} borrowers matching ...</div>
+// When filter === "all" count every occurrence (highlight) not just borrowers
+const cashResults = cashBorrowers.reduce((sum,b)=> sum + computeMatches(b),0);
 ```
 
-**Issue #3 – Column Sorting in Borrower Table**
+---
 
-**Before:** rows were rendered in original order only.
+### Issue #3 – Column Sorting in Borrowers Table
+
+**Files Modified**
+1. `client/src/components/borrowers/BorrowerTable.tsx`
+
+**Before:** rows rendered in original order only.
 
 **After:**
 ```typescript
-const [sortConfig, setSortConfig] = useState({ key: "name", direction: "asc" });
+const [sortConfig,setSortConfig] = useState({key:'name',direction:'asc'});
+const toggleSort = key => setSortConfig(p=>p.key===key?{key,direction:p.direction==='asc'?'desc':'asc'}:{key,direction:'asc'});
+const sorted = [...rows].sort(/* switch on key */);
+```
 
-const toggleSort = (key) =>
-  setSortConfig((p) => p.key === key ? { key, direction: p.direction === "asc" ? "desc" : "asc" } : { key, direction: "asc" });
+---
 
-const sorted = [...filteredBorrowersWithLoans].sort(/* switch on sortConfig.key */);
+### Issue #4 – End-of-Month Payment Schedule Fix
 
-// Header
-<th onClick={() => toggleSort("amount")}>Loan Amount {sortIndicator}</th>
+**Files Modified**
+1. `server/storage.ts`
+
+**Before:**
+```typescript
+paymentDate.setMonth(paymentDate.getMonth() + 1); // 31 Jan -> 3 Mar (Feb skipped)
+```
+
+**After:**
+```typescript
+// Safe month increment
+paymentDate.setDate(1);
+paymentDate.setMonth(paymentDate.getMonth() + 1);
+const lastDay = new Date(paymentDate.getFullYear(), paymentDate.getMonth()+1, 0).getDate();
+paymentDate.setDate(Math.min(anchorDay, lastDay)); // 31 Jan -> 28/29 Feb
 ```
 
 **Changes Made:**
-- Added dropdown styling (semi-transparent gray, hover/focus ring) positioned inside search bar.
-- Implemented per-column sorting with ▲ / ▼ indicators.
-- Refactored highlight logic to respect selected filter.
-- Fixed duplicate `getLoanStrategyDisplay` definition.
+- Added anchorDay & clamped dates to last day of month for EMI and FLAT strategies.
+- Prevents skipped months when start date is 29-31 and next month is shorter.
 
 ## [2025-08-03] - Defaulter Logic Fixes & Dashboard Total Amount Update
 
