@@ -231,6 +231,8 @@ export class DatabaseStorage implements IStorage {
     // Get common loan properties
     const amount = loan.amount;
     const startDate = new Date(loan.startDate);
+    // Preserve the original day of month to correctly roll over for shorter months
+    const anchorDay = startDate.getDate();
     const loanStrategy = loan.loanStrategy || 'emi'; // Default to EMI for backward compatibility
     
     // Generate payment schedule based on loan strategy
@@ -250,8 +252,15 @@ export class DatabaseStorage implements IStorage {
       let paymentDate = new Date(startDate);
 
       for (let i = 0; i < tenure; i++) {
+        // Advance one month while preserving anchor day safely
         paymentDate = new Date(paymentDate);
+        // Step 1: move to first of current month to avoid overflow
+        paymentDate.setDate(1);
+        // Step 2: advance month
         paymentDate.setMonth(paymentDate.getMonth() + 1);
+        // Step 3: clamp day to last day of new month
+        const lastDayOfTargetMonth = new Date(paymentDate.getFullYear(), paymentDate.getMonth() + 1, 0).getDate();
+        paymentDate.setDate(Math.min(anchorDay, lastDayOfTargetMonth));
 
         const interest = 0; // No interest calculation needed
         const principal = emiAmount;
@@ -274,7 +283,10 @@ export class DatabaseStorage implements IStorage {
       // For FLAT strategy, we only create the first payment
       // since there's no fixed tenure
       const paymentDate = new Date(startDate);
+      paymentDate.setDate(1);
       paymentDate.setMonth(paymentDate.getMonth() + 1);
+      const lastDayOfTargetMonth = new Date(paymentDate.getFullYear(), paymentDate.getMonth() + 1, 0).getDate();
+      paymentDate.setDate(Math.min(anchorDay, lastDayOfTargetMonth));
       
       await db.insert(payments).values({
         loanId: createdLoan.id,
