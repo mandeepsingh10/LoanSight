@@ -56,6 +56,10 @@ export default function Defaulters() {
       const borrower = borrowers.find((b: any) => b.loan?.id === payment.loanId);
       if (!borrower) return;
       
+      // Include borrowers with defaulted loans (prioritize defaulter over completed)
+      // Only skip if the loan is completed and not defaulted
+      if (borrower.loan?.status === 'completed' && borrower.loan?.status !== 'defaulted') return;
+      
       if (!borrowerPayments[borrower.id]) {
         borrowerPayments[borrower.id] = [];
       }

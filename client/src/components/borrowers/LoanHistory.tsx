@@ -159,6 +159,10 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
 
   // Add helper before filtering
   function isLoanDefaulted(loanId: number) {
+    // First check if the loan is marked as completed - if so, it's not defaulted
+    const loan = loans.find(l => l.id === loanId);
+    if (loan && loan.status === 'completed') return false;
+    
     const payments = (allPayments as any[]).filter(p => p.loanId === loanId);
     if (payments.length === 0) return false;
     const today = new Date();
@@ -346,7 +350,7 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
                       <span className="font-medium whitespace-nowrap">{loan.nextPayment}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <StatusBadge status={isLoanDefaulted(loan.id) ? 'defaulted' : loan.status} className="mx-auto" />
+                                                  <StatusBadge status={isLoanDefaulted(loan.id) ? 'defaulted' : loan.status} className="mx-auto" />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center space-x-3">

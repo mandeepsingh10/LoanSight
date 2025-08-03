@@ -68,6 +68,10 @@ export default function Defaulters() {
       const borrower = borrowerMap.get(borrowerId);
       if (!borrower) return;
 
+      // Include borrowers with defaulted loans (prioritize defaulter over completed)
+      // Only skip if the loan is completed and not defaulted
+      if (borrower.loan?.status === 'completed' && borrower.loan?.status !== 'defaulted') return;
+
       // Sort payments by due date
       const sortedPayments = borrowerPayments.sort((a, b) => 
         new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()

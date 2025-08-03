@@ -136,6 +136,9 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
     const borrower = borrowersWithLoans.find(b => b.id === borrowerId);
     if (!borrower || !borrower.loans || borrower.loans.length === 0) return false;
     
+    // Check if any loan is defaulted (prioritize defaulter over completed)
+    if (borrower.loans!.some(loan => loan.status === 'defaulted' || isLoanDefaulter(loan.id))) return true;
+    
     const borrowerPayments = payments.filter((payment: any) => 
       borrower.loans!.some(loan => loan.id === payment.loanId)
     );
@@ -172,6 +175,11 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
     const today = new Date();
     today.setHours(0,0,0,0);
 
+    // First check if the loan is marked as completed - if so, it's not defaulted
+    const borrower = borrowersWithLoans.find(b => b.loans?.some(loan => loan.id === loanId));
+    const loan = borrower?.loans?.find(loan => loan.id === loanId);
+    if (loan && loan.status === 'completed') return false;
+
     const loanPayments = payments.filter((p: any)=> p.loanId === loanId);
     if (loanPayments.length === 0) return false;
 
@@ -193,6 +201,8 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
   // Function to check if a borrower has any defaulted loans
   const hasDefaultedLoans = (borrower: BorrowerWithLoans) => {
     if (!borrower.loans || borrower.loans.length === 0) return false;
+    
+    // If borrower has any defaulted loans, they are considered defaulted (prioritize defaulter over completed)
     return borrower.loans.some(loan => loan.status === 'defaulted' || isLoanDefaulter(loan.id));
   };
 
@@ -509,9 +519,9 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                           <td className="px-6 py-4 whitespace-nowrap text-center text-white">
                             {loan.tenure ? `${loan.tenure} months` : "-"}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <StatusBadge status={isLoanDefaulter(loan.id) ? 'defaulted' : loan.status} className="mx-auto" />
-                          </td>
+                                                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <StatusBadge status={isLoanDefaulter(loan.id) ? 'defaulted' : loan.status} className="mx-auto" />
+                            </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <div className="flex items-center justify-center space-x-3">
                               <Button 
