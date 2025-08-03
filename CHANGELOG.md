@@ -7,7 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No changes yet_
+### Fixed
+- **Issue #8 – Payments Page Loading State**: Fixed white glow/flash when switching to Payments tab by simplifying loading state to match other pages' pattern.
+
+### Technical Details
+
+#### Files Modified
+1. `client/src/pages/payments.tsx`
+
+#### Key Logic Changes
+
+**Before:**
+```typescript
+// Complex loading skeleton with sidebar layout
+if (isLoading) {
+  return (
+    <div className="flex h-full bg-black">
+      <div className="w-64 bg-black border-r border-gray-700 p-4 animate-pulse">
+        <div className="h-6 bg-gray-700 rounded mb-4"></div>
+        <div className="space-y-2">
+          <div className="h-10 bg-gray-700 rounded"></div>
+          <div className="h-10 bg-gray-700 rounded"></div>
+        </div>
+      </div>
+      <div className="flex-1 p-6 bg-black">
+        <div className="h-8 bg-gray-700 rounded w-1/4 mb-6"></div>
+        <div className="h-64 bg-gray-700 rounded"></div>
+      </div>
+    </div>
+  );
+}
+```
+
+**After:**
+```typescript
+// Simple loading state consistent with other pages
+if (isLoading) {
+  return (
+    <div className="p-6 space-y-6 min-h-screen bg-black">
+      <div className="text-center py-10">
+        <p className="text-white/50">Loading payment information...</p>
+      </div>
+    </div>
+  );
+}
+```
+
+**Impact:**
+- ✅ Eliminates white glow/flash when switching to Payments tab
+- ✅ Consistent loading experience across all pages
+- ✅ Smoother visual transitions
+- ✅ No impact on data, schema, or backup/restore functionality
 
 ## [2025-08-04] - Borrower Search & Table Enhancements
 
