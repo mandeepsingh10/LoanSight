@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2024-12-19] - Defaulter Logic Fixes
+## [2024-12-19] - Defaulter Logic Fixes & Dashboard Total Amount Update
 
 ### Added
 - Enhanced defaulter detection logic to consider loan status
@@ -17,10 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated defaulter detection to prioritize defaulter status over completed status
 - Modified StatusBadge logic to show correct loan status
 - Updated all defaulter-related components to use consistent logic
+- **Dashboard Total Amount:** Modified calculation to exclude completed loans from total amount
 
 ### Fixed
 - **Issue #1:** Defaulted loans not being removed from defaulter lists when marked as completed
 - **Issue #2:** Incorrect priority logic where completed loans were taking precedence over defaulted loans
+- **Issue #3:** Dashboard total amount included completed loans (now excluded)
 
 ### Technical Details
 
@@ -30,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 3. `client/src/components/borrowers/BorrowerTable.tsx`
 4. `client/src/components/borrowers/LoanHistory.tsx`
 5. `client/src/pages/defaulters.tsx`
+6. `server/storage.ts` - Updated dashboard total amount calculation
 
 #### Schema Changes:
 - ❌ None (frontend-only changes)
@@ -48,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `hasDefaultedLoans()` function to consider any defaulted loan as sufficient for defaulter status
 - Modified `isDefaulter()` function to check for defaulted loans first
 - Updated StatusBadge logic to show "defaulted" status when applicable
+
+**Issue #3 - Dashboard Total Amount Calculation:**
+- Modified `getDashboardStats()` function to exclude completed loans from total amount
+- Updated total amount calculation to only include active, defaulted, and cancelled loans
 
 #### Code Examples:
 
@@ -93,11 +100,30 @@ const hasDefaultedLoans = (borrower: BorrowerWithLoans) => {
 };
 ```
 
+**Before (Issue #3):**
+```typescript
+// Included all loans in total amount
+for (const loan of allLoans) {
+  totalAmount += loan.amount;
+}
+```
+
+**After (Issue #3):**
+```typescript
+// Exclude completed loans from total amount
+for (const loan of allLoans) {
+  if (loan.status !== 'completed') {
+    totalAmount += loan.amount;
+  }
+}
+```
+
 #### Result:
 - ✅ When a loan is marked as "completed", it will not be shown as "defaulted"
 - ✅ If a borrower has multiple loans and ANY of them are defaulted, they will be shown as a defaulter
 - ✅ Defaulter status takes priority over completed status
 - ✅ Individual loans that are defaulted will show as "defaulted" even if the borrower has other completed loans
+- ✅ Dashboard total amount now excludes completed loans, showing only active outstanding amounts
 
 ---
 
