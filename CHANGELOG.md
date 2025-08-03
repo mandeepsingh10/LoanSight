@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_No changes yet_
+
+## [2025-08-04] - Borrower Search & Table Enhancements
+
 ### Added
 - Search filter dropdown on Borrowers page with options: **Borrower** (default), All Fields, Guarantor, Borrower Address, Guarantor Address.
 - Highlight logic respects selected filter; only relevant fields are highlighted.
@@ -32,7 +36,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Backup/Restore Impact
 - ❌ None
 
-## [2024-12-19] - Defaulter Logic Fixes & Dashboard Total Amount Update
+#### Key Logic Changes
+
+**Issue #1 – Search Filter Dropdown & Field-Aware Highlighting**
+
+**Before:**
+```typescript
+// borrowers.tsx (simplified)
+const [searchQuery, setSearchQuery] = useState("");
+
+// A single search input – always searched every field
+const searchableText = [
+  borrower.name,
+  borrower.phone,
+  borrower.address,
+  borrower.guarantorName,
+  borrower.guarantorAddress
+].join(" ").toLowerCase();
+
+return searchableText.includes(searchTerm);
+
+// highlightText always applied
+highlightText(borrower.address, searchQuery);
+```
+
+**After:**
+```typescript
+// Added filter state & dropdown (default "borrower")
+const [searchFilter, setSearchFilter] = useState("borrower");
+
+// Filter-specific match logic
+if (searchFilter === "borrower") {
+  return (borrower.name || "").toLowerCase().includes(searchTerm);
+} else if (searchFilter === "guarantor_address") {
+  return (borrower.guarantorAddress || "").toLowerCase().includes(searchTerm);
+}
+
+// Field-aware highlighting helper
+const highlightField = (text, category) => {
+  const allow = searchFilter === "all" || searchFilter === category;
+  return highlightText(text, allow ? searchQuery : "");
+};
+
+// Usage
+highlightField(borrower.address, "borrower_address");
+```
+
+**Issue #2 – Accurate Badge Counts & Debug Text**
+
+**Before:** counts were based on unique borrowers; badges mis-matched when borrowers had loans in both categories.
+
+**After:**
+```typescript
+// borrowers.tsx (excerpt)
+const cashResults = /* counts occurrences per field when filter==='all' */
+const goldResults = /* same for gold-silver */
+
+<span>{cashResults}</span>
+<div>Found {cashResults} borrowers matching ...</div>
+```
+
+**Issue #3 – Column Sorting in Borrower Table**
+
+**Before:** rows were rendered in original order only.
+
+**After:**
+```typescript
+const [sortConfig, setSortConfig] = useState({ key: "name", direction: "asc" });
+
+const toggleSort = (key) =>
+  setSortConfig((p) => p.key === key ? { key, direction: p.direction === "asc" ? "desc" : "asc" } : { key, direction: "asc" });
+
+const sorted = [...filteredBorrowersWithLoans].sort(/* switch on sortConfig.key */);
+
+// Header
+<th onClick={() => toggleSort("amount")}>Loan Amount {sortIndicator}</th>
+```
+
+**Changes Made:**
+- Added dropdown styling (semi-transparent gray, hover/focus ring) positioned inside search bar.
+- Implemented per-column sorting with ▲ / ▼ indicators.
+- Refactored highlight logic to respect selected filter.
+- Fixed duplicate `getLoanStrategyDisplay` definition.
+
+## [2025-08-03] - Defaulter Logic Fixes & Dashboard Total Amount Update
 
 ### Added
 - Enhanced defaulter detection logic to consider loan status
