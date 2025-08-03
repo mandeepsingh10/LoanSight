@@ -12,7 +12,7 @@ import Borrowers from "./pages/borrowers";
 import EditBorrower from "./pages/edit-borrower";
 import BorrowerDetails from "./pages/borrower-details";
 import Payments from "./pages/payments";
-import DefaultersNew from "./pages/defaulters-new";
+import DefaultersNew from "./pages/defaulters";
 import Reports from "./pages/reports";
 import Settings from "./pages/settings";
 import Account from "./pages/account";

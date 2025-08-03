@@ -174,17 +174,9 @@ const Payments = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-full">
-        <div className="w-64 bg-white border-r border-gray-200 p-4 animate-pulse">
-          <div className="h-6 bg-gray-200 rounded mb-4"></div>
-          <div className="space-y-2">
-            <div className="h-10 bg-gray-200 rounded"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-        <div className="flex-1 p-6">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
+      <div className="p-6 space-y-6 min-h-screen bg-black">
+        <div className="text-center py-10">
+          <p className="text-white/50">Loading payment information...</p>
         </div>
       </div>
     );
