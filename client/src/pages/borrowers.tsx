@@ -10,6 +10,7 @@ import { useContext } from "react";
 import { AppContext } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 // Stylized mountain of coins SVG icon
 const CoinIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -55,6 +56,22 @@ const Borrowers = () => {
   const [showNewBorrowerModal, setShowNewBorrowerModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("cash");
+  const [searchFilter, setSearchFilter] = useState("borrower"); // default to borrower | other options: all, guarantor, borrower_address, guarantor_address
+  // Helper to get user-friendly loan strategy label (shared across component)
+  const getLoanStrategyDisplay = (strategy: string) => {
+    switch (strategy) {
+      case "emi":
+        return "EMI";
+      case "flat":
+        return "FLAT";
+      case "custom":
+        return "CUSTOM";
+      case "gold_silver":
+        return "GOLD/SILVER";
+      default:
+        return strategy?.toUpperCase();
+    }
+  };
   const { isAdmin, role } = useAuth();
 
   const { data: allBorrowers, isLoading } = useQuery({
@@ -74,33 +91,38 @@ const Borrowers = () => {
     
     const searchTerm = searchQuery.toLowerCase();
     
-    // Get loan strategy display name for searching
-    const getLoanStrategyDisplay = (strategy: string) => {
-      switch (strategy) {
-        case "emi":
-          return "EMI";
-        case "flat":
-          return "FLAT";
-        case "custom":
-          return "CUSTOM";
-        case "gold_silver":
-          return "GOLD/SILVER";
-        default:
-          return strategy.toUpperCase();
-      }
-    };
+    // getLoanStrategyDisplay now defined at component scope
     
-    const searchableText = [
+    const borrowerFields = [
       borrower.name || '',
       borrower.phone || '',
-      borrower.address || '',
+      borrower.address || ''
+    ].join(' ').toLowerCase();
+
+    const guarantorFields = [
       borrower.guarantorName || '',
       borrower.guarantorPhone || '',
-      borrower.guarantorAddress || '',
-      borrower.loan?.loanStrategy ? getLoanStrategyDisplay(borrower.loan.loanStrategy) : '',
-      borrower.loan?.loanStrategy || '' // Also search the raw strategy value
+      borrower.guarantorAddress || ''
     ].join(' ').toLowerCase();
-    
+
+    // Get loan strategy name for the "all" filter only
+    const strategyFields = [
+      borrower.loan?.loanStrategy ? getLoanStrategyDisplay(borrower.loan.loanStrategy) : '',
+      borrower.loan?.loanStrategy || ''
+    ].join(' ').toLowerCase();
+
+    // Filter based on selected searchFilter
+    if (searchFilter === "borrower") {
+      return (borrower.name || '').toLowerCase().includes(searchTerm);
+    } else if (searchFilter === "guarantor") {
+      return (borrower.guarantorName || '').toLowerCase().includes(searchTerm);
+    } else if (searchFilter === "borrower_address") {
+      return (borrower.address || '').toLowerCase().includes(searchTerm);
+    } else if (searchFilter === "guarantor_address") {
+      return (borrower.guarantorAddress || '').toLowerCase().includes(searchTerm);
+    }
+    // default all
+    const searchableText = [borrowerFields, guarantorFields, strategyFields].join(' ');
     return searchableText.includes(searchTerm);
   });
 
@@ -110,6 +132,92 @@ const Borrowers = () => {
     const bId = b.idNumber || b.id;
     return aId - bId;
   });
+
+  // NEW: Fetch all loans for searched borrowers to compute accurate badge counts
+  const { data: borrowerLoans = {}, isLoading: loansLoading } = useQuery({
+    queryKey: ["/api/borrowers", "loans", searchFilter, sortedBorrowers?.map(b => b.id) || []],
+    // Fetch loans for each borrower in parallel and build a map { borrowerId: Loan[] }
+    queryFn: async () => {
+      const loanMap: Record<number, any[]> = {};
+      if (!sortedBorrowers) return loanMap;
+
+      await Promise.all(sortedBorrowers.map(async (b) => {
+        try {
+          const resp = await fetch(`/api/borrowers/${b.id}/loans`);
+          loanMap[b.id] = resp.ok ? await resp.json() : [];
+        } catch {
+          loanMap[b.id] = [];
+        }
+      }));
+
+      return loanMap;
+    },
+    enabled: !!sortedBorrowers && sortedBorrowers.length > 0
+  });
+
+  // Helper to decide loan bucket
+  const isCashLoan = (strategy?: string | null) => {
+    return !strategy || strategy === "emi" || strategy === "flat" || strategy === "custom";
+  };
+
+  // Recalculate badge counts based on all loans the (filtered) borrowers have (unique borrowers)
+  const cashBorrowers = (sortedBorrowers || []).filter(b => {
+    const loans = borrowerLoans[b.id] || [];
+    return loans.some(l => isCashLoan(l.loanStrategy));
+  });
+
+  const goldBorrowers = (sortedBorrowers || []).filter(b => {
+    const loans = borrowerLoans[b.id] || [];
+    return loans.some(l => l.loanStrategy === "gold_silver");
+  });
+
+  // Helper to count occurrences of search term in text
+  const countOccurrences = (text: string, term: string) => {
+    if (!term || !text) return 0;
+    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+    return (text.match(regex) || []).length;
+  };
+
+  let cashResults = cashBorrowers.length;
+  let goldResults = goldBorrowers.length;
+
+  if (searchFilter === "all" && searchQuery.trim()) {
+    const term = searchQuery.toLowerCase();
+
+    const computeMatches = (b: any, loans: any[]) => {
+      const baseFields = [
+        b.name,
+        b.phone,
+        b.address
+      ];
+
+      // Aggregate borrower-level guarantor details (may be legacy)
+      baseFields.push(b.guarantorName, b.guarantorPhone, b.guarantorAddress);
+
+      // Add per-loan fields
+      loans.forEach((ln) => {
+        baseFields.push(
+          ln.guarantorName,
+          ln.guarantorPhone,
+          ln.guarantorAddress,
+          ln.loanStrategy,
+          ln.loanStrategy ? getLoanStrategyDisplay(ln.loanStrategy) : ""
+        );
+      });
+
+      return baseFields.reduce((sum, f) => sum + countOccurrences((f || '').toString().toLowerCase(), term), 0);
+    };
+
+    cashResults = cashBorrowers.reduce((sum, b) => {
+      const loans = (borrowerLoans[b.id] || []).filter((ln:any)=> isCashLoan(ln.loanStrategy));
+      return sum + computeMatches(b, loans);
+    }, 0);
+
+    goldResults = goldBorrowers.reduce((sum, b) => {
+      const loans = (borrowerLoans[b.id] || []).filter((ln:any)=> ln.loanStrategy === "gold_silver");
+      return sum + computeMatches(b, loans);
+    }, 0);
+  }
 
   return (
     <div className="p-6">
@@ -121,9 +229,24 @@ const Borrowers = () => {
               placeholder="Search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="py-6 pl-10 pr-4 w-full rounded-lg"
+              className="py-6 pl-10 pr-36 w-full rounded-lg"
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+            {/* Filter dropdown positioned inside input */}
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+              <Select value={searchFilter} onValueChange={setSearchFilter}>
+                <SelectTrigger className="w-[140px] bg-gray-700/60 hover:bg-gray-600 border border-gray-600 text-white text-sm rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-800 text-white border-gray-700 shadow-lg rounded-md">
+                  <SelectItem value="borrower">Borrower</SelectItem>
+                  <SelectItem value="all">All Fields</SelectItem>
+                  <SelectItem value="guarantor">Guarantor</SelectItem>
+                  <SelectItem value="borrower_address">Borrower Address</SelectItem>
+                  <SelectItem value="guarantor_address">Guarantor Address</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
         
@@ -150,7 +273,7 @@ const Borrowers = () => {
             <span>Cash</span>
             {searchQuery.trim() && (
               <span className="ml-1 text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
-                {sortedBorrowers?.length || 0}
+                {cashResults}
               </span>
             )}
           </TabsTrigger>
@@ -162,7 +285,7 @@ const Borrowers = () => {
             <span>Gold & Silver</span>
             {searchQuery.trim() && (
               <span className="ml-1 text-xs bg-yellow-600 text-white px-2 py-1 rounded-full">
-                {sortedBorrowers?.length || 0}
+                {goldResults}
               </span>
             )}
           </TabsTrigger>
@@ -183,10 +306,21 @@ const Borrowers = () => {
               {/* Debug info */}
               {searchQuery.trim() && (
                 <div className="mb-4 p-3 bg-blue-900 text-blue-200 rounded text-sm">
-                  Found {sortedBorrowers.length} borrowers matching "{searchQuery}"
+                  {(() => {
+                    const plural = (n: number, singular: string, plural: string) => n === 1 ? singular : plural;
+                    const labelMap: Record<string, [string, string]> = {
+                      borrower: ['borrower', 'borrowers'],
+                      guarantor: ['guarantor', 'guarantors'],
+                      borrower_address: ['borrower address', 'borrower addresses'],
+                      guarantor_address: ['guarantor address', 'guarantor addresses'],
+                      all: ['result', 'results']
+                    };
+                    const [sing, plur] = labelMap[searchFilter] || labelMap['all'];
+                    return `Found ${cashResults} ${plural(cashResults, sing, plur)} matching \"${searchQuery}\" in Cash loans`;
+                  })()}
                 </div>
               )}
-            <BorrowerTable borrowers={sortedBorrowers} searchQuery={searchQuery} activeTab="cash" />
+            <BorrowerTable borrowers={sortedBorrowers} searchQuery={searchQuery} searchFilter={searchFilter} activeTab="cash" />
             </>
           ) : (
             <div className="bg-black rounded-lg border border-gray-800 p-12 text-center">
@@ -228,10 +362,21 @@ const Borrowers = () => {
               {/* Debug info */}
               {searchQuery.trim() && (
                 <div className="mb-4 p-3 bg-yellow-900 text-yellow-200 rounded text-sm">
-                  Found {sortedBorrowers.length} borrowers matching "{searchQuery}"
+                  {(() => {
+                    const plural = (n: number, singular: string, plural: string) => n === 1 ? singular : plural;
+                    const labelMap: Record<string, [string, string]> = {
+                      borrower: ['borrower', 'borrowers'],
+                      guarantor: ['guarantor', 'guarantors'],
+                      borrower_address: ['borrower address', 'borrower addresses'],
+                      guarantor_address: ['guarantor address', 'guarantor addresses'],
+                      all: ['result', 'results']
+                    };
+                    const [sing, plur] = labelMap[searchFilter] || labelMap['all'];
+                    return `Found ${goldResults} ${plural(goldResults, sing, plur)} matching \"${searchQuery}\" in Gold & Silver loans`;
+                  })()}
                 </div>
               )}
-            <BorrowerTable borrowers={sortedBorrowers} searchQuery={searchQuery} activeTab="gold-silver" />
+            <BorrowerTable borrowers={sortedBorrowers} searchQuery={searchQuery} searchFilter={searchFilter} activeTab="gold-silver" />
             </>
           ) : (
             <div className="bg-black rounded-lg border border-gray-800 p-12 text-center">
