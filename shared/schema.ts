@@ -129,8 +129,8 @@ export const insertBorrowerSchema = createInsertSchema(borrowers).omit({ id: tru
   notes: z.string().nullable().optional(), // Allow optional notes that can be null
 });
 
-// Schema for updating borrower (excludes ID and document number to keep them protected)
-export const updateBorrowerSchema = createInsertSchema(borrowers).omit({ id: true, documentNumber: true }).partial();
+// Schema for updating borrower (excludes ID to keep it protected)
+export const updateBorrowerSchema = createInsertSchema(borrowers).omit({ id: true }).partial();
 
 // Schema for inserting loan
 export const insertLoanSchema = createInsertSchema(loans).omit({ id: true, createdAt: true })

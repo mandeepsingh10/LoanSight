@@ -203,9 +203,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
   const updateBorrowerMutation = useMutation({
     mutationFn: async (data: any) => {
       console.log("Frontend sending update data:", data);
-      // Exclude document number from the update data to keep it protected
-      const { documentNumber, ...updateData } = data;
-      const response = await apiRequest("PUT", `/api/borrowers/${borrowerId}`, updateData);
+      const response = await apiRequest("PUT", `/api/borrowers/${borrowerId}`, data);
       return response.json();
     },
     onSuccess: () => {
@@ -785,11 +783,11 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
               
               {/* Borrower Details */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
+                <Card className={`bg-black border-gray-700 transition-colors duration-200 ${!editPersonalInfo ? 'hover:bg-[#111111]' : ''}`}>
                   <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <User className="text-blue-400" size={20} />
-                      Personal Information
+                      <User className="text-blue-500" size={20} />
+                      Personal Details
                     </CardTitle>
                     <Button
                       variant="ghost"
@@ -799,6 +797,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                       {editPersonalInfo ? <X className="h-4 w-4" /> : <Pencil size={16} className="text-blue-400 hover:text-blue-300" />}
                     </Button>
                   </CardHeader>
+                  <div className="border-b border-gray-700 mx-6 mb-4"></div>
                   <CardContent>
                     {editPersonalInfo ? (
                       <div className="space-y-4">
@@ -883,37 +882,37 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                       </div>
                     ) : (
                       <dl className="space-y-2 text-sm font-mono">
-                        <div className="flex">
-                          <dt className="text-gray-400 w-32">Name:</dt>
-                          <dd className="text-white">{borrower.name}</dd>
+                        <div className="flex items-start">
+                          <dt className="text-gray-400 w-36 flex-shrink-0">Name:</dt>
+                          <dd className="text-white break-all">{borrower.name}</dd>
                         </div>
                         
-                        <div className="flex">
-                          <dt className="text-gray-400 w-32">Phone:</dt>
-                          <dd className="text-white">{borrower.phone}</dd>
+                        <div className="flex items-start">
+                          <dt className="text-gray-400 w-36 flex-shrink-0">Phone:</dt>
+                          <dd className="text-white break-all">{borrower.phone}</dd>
                         </div>
                         
-                        <div className="flex">
-                          <dt className="text-gray-400 w-32">ID Number:</dt>
-                          <dd className="text-white">{borrower.id}</dd>
+                        <div className="flex items-start">
+                          <dt className="text-gray-400 w-36 flex-shrink-0">ID Number:</dt>
+                          <dd className="text-white break-all">{borrower.id}</dd>
                         </div>
                         
-                        <div className="flex">
-                          <dt className="text-gray-400 w-32">Address:</dt>
-                          <dd className="text-white">{borrower.address}</dd>
+                        <div className="flex items-start">
+                          <dt className="text-gray-400 w-36 flex-shrink-0">Address:</dt>
+                          <dd className="text-white break-all">{borrower.address}</dd>
                         </div>
                         
                         {borrower.documentType && (
-                          <div className="flex">
-                            <dt className="text-gray-400 w-32">Document Type:</dt>
-                            <dd className="text-white capitalize">{borrower.documentType}</dd>
+                          <div className="flex items-start">
+                            <dt className="text-gray-400 w-36 flex-shrink-0">Document Type:</dt>
+                            <dd className="text-white capitalize break-all">{borrower.documentType}</dd>
                           </div>
                         )}
                         
                         {borrower.documentNumber && (
-                          <div className="flex">
-                            <dt className="text-gray-400 w-32">Document Number:</dt>
-                            <dd className="text-white">{borrower.documentNumber}</dd>
+                          <div className="flex items-start">
+                            <dt className="text-gray-400 w-36 flex-shrink-0">Document Number:</dt>
+                            <dd className="text-white break-all">{borrower.documentNumber}</dd>
                           </div>
                         )}
                       </dl>
@@ -921,7 +920,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className={`bg-black border-gray-700 transition-colors duration-200 ${!editGuarantorInfo ? 'hover:bg-[#111111]' : ''}`}>
                   <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Shield className="text-green-500" size={20} />
@@ -935,6 +934,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                       {editGuarantorInfo ? <X className="h-4 w-4" /> : <Pencil size={16} className="text-blue-400 hover:text-blue-300" />}
                     </Button>
                   </CardHeader>
+                  <div className="border-b border-gray-700 mx-6 mb-4"></div>
                   <CardContent>
                     {editGuarantorInfo ? (
                       <div className="space-y-4">
@@ -1018,7 +1018,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                   </CardContent>
                 </Card>
                 
-                <Card>
+                <Card className="bg-black border-gray-700 hover:bg-[#111111] transition-colors duration-200">
                   <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <BarChart2 className="text-yellow-400" size={20} />
@@ -1032,6 +1032,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                       + Add Loan
                     </Button>
                   </CardHeader>
+                  <div className="border-b border-gray-700 mx-6 mb-4"></div>
                   <CardContent>
                     {loans && loans.length > 0 ? (
                       <div className="space-y-3">
@@ -1110,10 +1111,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
               </div>
 
               {/* Notes Card */}
-              <Card>
+              <Card className={`bg-black border-gray-700 transition-colors duration-200 ${!editNotes ? 'hover:bg-[#111111]' : ''}`}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
-                    <StickyNote className="text-pink-400" size={20} />
+                    <StickyNote className="text-yellow-500" size={20} />
                     Notes
                   </CardTitle>
                   <Button
@@ -1121,9 +1122,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                     size="icon"
                     onClick={() => setEditNotes(!editNotes)}
                   >
-                    <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
+                    {editNotes ? <X className="h-4 w-4" /> : <Pencil size={16} className="text-blue-400 hover:text-blue-300" />}
                   </Button>
                 </CardHeader>
+                <div className="border-b border-gray-700 mx-6 mb-4"></div>
                 <CardContent>
                   {editNotes ? (
                     <div className="space-y-3">
@@ -1276,11 +1278,11 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                 
                 {/* Borrower Details */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
+                  <Card className={`bg-black border-gray-700 transition-colors duration-200 ${!editPersonalInfo ? 'hover:bg-[#111111]' : ''}`}>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                       <CardTitle className="text-lg flex items-center gap-2">
-                        <User className="text-blue-400" size={20} />
-                        Personal Information
+                        <User className="text-blue-500" size={20} />
+                        Personal Details
                       </CardTitle>
                       <Button
                         variant="ghost"
@@ -1290,6 +1292,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                         {editPersonalInfo ? <X className="h-4 w-4" /> : <Pencil size={16} className="text-blue-400 hover:text-blue-300" />}
                       </Button>
                     </CardHeader>
+                    <div className="border-b border-gray-700 mx-6 mb-4"></div>
                     <CardContent>
                       {editPersonalInfo ? (
                         <div className="space-y-4">
@@ -1374,37 +1377,37 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                         </div>
                       ) : (
                         <dl className="space-y-2 text-sm font-mono">
-                          <div className="flex">
-                            <dt className="text-gray-400 w-32">Name:</dt>
-                            <dd className="text-white">{borrower.name}</dd>
+                          <div className="flex items-start">
+                            <dt className="text-gray-400 w-36 flex-shrink-0">Name:</dt>
+                            <dd className="text-white break-all">{borrower.name}</dd>
                           </div>
                           
-                          <div className="flex">
-                            <dt className="text-gray-400 w-32">Phone:</dt>
-                            <dd className="text-white">{borrower.phone}</dd>
+                          <div className="flex items-start">
+                            <dt className="text-gray-400 w-36 flex-shrink-0">Phone:</dt>
+                            <dd className="text-white break-all">{borrower.phone}</dd>
                           </div>
                           
-                          <div className="flex">
-                            <dt className="text-gray-400 w-32">ID Number:</dt>
-                            <dd className="text-white">{borrower.id}</dd>
+                          <div className="flex items-start">
+                            <dt className="text-gray-400 w-36 flex-shrink-0">ID Number:</dt>
+                            <dd className="text-white break-all">{borrower.id}</dd>
                           </div>
                           
-                          <div className="flex">
-                            <dt className="text-gray-400 w-32">Address:</dt>
-                            <dd className="text-white">{borrower.address}</dd>
+                          <div className="flex items-start">
+                            <dt className="text-gray-400 w-36 flex-shrink-0">Address:</dt>
+                            <dd className="text-white break-all">{borrower.address}</dd>
                           </div>
                           
                           {borrower.documentType && (
-                            <div className="flex">
-                              <dt className="text-gray-400 w-32">Document Type:</dt>
-                              <dd className="text-white capitalize">{borrower.documentType}</dd>
+                            <div className="flex items-start">
+                              <dt className="text-gray-400 w-36 flex-shrink-0">Document Type:</dt>
+                              <dd className="text-white capitalize break-all">{borrower.documentType}</dd>
                             </div>
                           )}
                           
                           {borrower.documentNumber && (
-                            <div className="flex">
-                              <dt className="text-gray-400 w-32">Document Number:</dt>
-                              <dd className="text-white">{borrower.documentNumber}</dd>
+                            <div className="flex items-start">
+                              <dt className="text-gray-400 w-36 flex-shrink-0">Document Number:</dt>
+                              <dd className="text-white break-all">{borrower.documentNumber}</dd>
                             </div>
                           )}
                         </dl>
@@ -1412,7 +1415,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className={`bg-black border-gray-700 transition-colors duration-200 ${!editGuarantorInfo ? 'hover:bg-[#111111]' : ''}`}>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Shield className="text-green-500" size={20} />
@@ -1426,6 +1429,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                         {editGuarantorInfo ? <X className="h-4 w-4" /> : <Pencil size={16} className="text-blue-400 hover:text-blue-300" />}
                       </Button>
                     </CardHeader>
+                    <div className="border-b border-gray-700 mx-6 mb-4"></div>
                     <CardContent>
                       {editGuarantorInfo ? (
                         <div className="space-y-4">
@@ -1509,7 +1513,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                     </CardContent>
                   </Card>
                   
-                  <Card>
+                  <Card className="bg-black border-gray-700 hover:bg-[#111111] transition-colors duration-200">
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <BarChart2 className="text-yellow-400" size={20} />
@@ -1525,6 +1529,7 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                         </Button>
                       )}
                     </CardHeader>
+                    <div className="border-b border-gray-700 mx-6 mb-4"></div>
                     <CardContent>
                       {loans && loans.length > 0 ? (
                         <div className="space-y-3">
@@ -1603,10 +1608,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                 </div>
 
                 {/* Notes Card */}
-                <Card>
+                <Card className={`bg-black border-gray-700 transition-colors duration-200 ${!editNotes ? 'hover:bg-[#111111]' : ''}`}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
-                      <StickyNote className="text-pink-400" size={20} />
+                      <StickyNote className="text-yellow-500" size={20} />
                       Notes
                     </CardTitle>
                     <Button
@@ -1614,9 +1619,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
                       size="icon"
                       onClick={() => setEditNotes(!editNotes)}
                     >
-                      <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
+                      {editNotes ? <X className="h-4 w-4" /> : <Pencil size={16} className="text-blue-400 hover:text-blue-300" />}
                     </Button>
                   </CardHeader>
+                  <div className="border-b border-gray-700 mx-6 mb-4"></div>
                   <CardContent>
                     {editNotes ? (
                       <div className="space-y-3">

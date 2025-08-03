@@ -122,16 +122,17 @@ export class DatabaseStorage implements IStorage {
   async updateBorrower(id: number, borrower: Partial<InsertBorrower>): Promise<Borrower | undefined> {
     console.log("updateBorrower called with:", { id, borrower });
     
-    // Explicitly exclude id and documentNumber from updates to keep them protected
-    const { id: borrowerId, documentNumber, ...updateData } = borrower as any;
+    // Explicitly exclude id from updates to keep it protected
+    const { id: borrowerId, ...updateData } = borrower as any;
     console.log("updateData after exclusions:", updateData);
     
-    // Only update the allowed fields, never touch id or documentNumber
+    // Only update the allowed fields, never touch id
     const allowedFields: any = {};
     if (updateData.name !== undefined) allowedFields.name = updateData.name;
     if (updateData.phone !== undefined) allowedFields.phone = updateData.phone;
     if (updateData.address !== undefined) allowedFields.address = updateData.address;
     if (updateData.documentType !== undefined) allowedFields.documentType = updateData.documentType;
+    if (updateData.documentNumber !== undefined) allowedFields.documentNumber = updateData.documentNumber;
     if (updateData.guarantorName !== undefined) allowedFields.guarantorName = updateData.guarantorName;
     if (updateData.guarantorPhone !== undefined) allowedFields.guarantorPhone = updateData.guarantorPhone;
     if (updateData.guarantorAddress !== undefined) allowedFields.guarantorAddress = updateData.guarantorAddress;
