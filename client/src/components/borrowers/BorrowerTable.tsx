@@ -26,6 +26,7 @@ import { format } from "date-fns";
 interface BorrowerTableProps {
   borrowers: Borrower[];
   searchQuery?: string;
+  searchFilter: string; // all | borrower | guarantor | borrower_address | guarantor_address
   activeTab: "cash" | "gold-silver";
 }
 
@@ -51,7 +52,7 @@ interface BorrowerWithLoans extends Borrower {
   }>;
 }
 
-const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTableProps) => {
+const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }: BorrowerTableProps) => {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [confirmDeleteLoan, setConfirmDeleteLoan] = useState<{ borrowerId: number; loanId: number } | null>(null);
   const [selectedBorrower, setSelectedBorrower] = useState<number | null>(null);
@@ -63,6 +64,17 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { isAdmin } = useAuth();
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{key: string; direction: 'asc' | 'desc'}>({key: 'name', direction: 'asc'});
+
+  const toggleSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: 'asc' };
+    });
+  };
 
   // Function to highlight search terms in text
   const highlightText = (text: string, searchTerm: string) => {
@@ -78,6 +90,12 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
       }
       return part;
     });
+  };
+
+  // Wrapper to apply highlighting only for allowed field categories
+  const highlightField = (text: any, category: string) => {
+    const allow = searchFilter === "all" || searchFilter === category;
+    return highlightText(text, allow ? searchQuery : "");
   };
 
   // Fetch loans for all borrowers
@@ -336,7 +354,40 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
       }
       return null;
     })
-    .filter(Boolean);
+    .filter(Boolean) as BorrowerWithLoans[];
+
+  // Apply sorting
+  const sortedBorrowersWithLoans = [...filteredBorrowersWithLoans].sort((a, b) => {
+    const dir = sortConfig.direction === 'asc' ? 1 : -1;
+    const getFirstLoan = (br: BorrowerWithLoans) => (br.loans && br.loans.length > 0 ? br.loans[0] : undefined);
+
+    switch (sortConfig.key) {
+      case 'name':
+        return a.name.localeCompare(b.name) * dir;
+      case 'amount': {
+        const la = getFirstLoan(a)?.amount || 0;
+        const lb = getFirstLoan(b)?.amount || 0;
+        return (la - lb) * dir;
+      }
+      case 'date': {
+        const da = getFirstLoan(a)?.startDate ? new Date(getFirstLoan(a)!.startDate).getTime() : 0;
+        const db = getFirstLoan(b)?.startDate ? new Date(getFirstLoan(b)!.startDate).getTime() : 0;
+        return (da - db) * dir;
+      }
+      case 'loanType': {
+        const la = getFirstLoan(a)?.loanStrategy || '';
+        const lb = getFirstLoan(b)?.loanStrategy || '';
+        return la.localeCompare(lb) * dir;
+      }
+      case 'status': {
+        const la = getFirstLoan(a)?.status || '';
+        const lb = getFirstLoan(b)?.status || '';
+        return la.localeCompare(lb) * dir;
+      }
+      default:
+        return 0;
+    }
+  });
 
   // Debug logging
   console.log("BorrowerTable received borrowers:", borrowers.length);
@@ -353,8 +404,8 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                 <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider w-12">
                   No.
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
-                  Borrower
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider cursor-pointer" onClick={() => toggleSort('name')}>
+                  Borrower {sortConfig.key==='name' ? (sortConfig.direction==='asc' ? '▲' : '▼') : ''}
                 </th>
                 <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Contact
@@ -362,20 +413,20 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                 <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Guarantor
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
-                  Loan Amount
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center cursor-pointer" onClick={() => toggleSort('amount')}>
+                  Loan Amount {sortConfig.key==='amount' ? (sortConfig.direction==='asc' ? '▲' : '▼') : ''}
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
-                  Start Date
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center cursor-pointer" onClick={() => toggleSort('date')}>
+                  Start Date {sortConfig.key==='date' ? (sortConfig.direction==='asc' ? '▲' : '▼') : ''}
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
-                  Loan Type
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center cursor-pointer" onClick={() => toggleSort('loanType')}>
+                  Loan Type {sortConfig.key==='loanType' ? (sortConfig.direction==='asc' ? '▲' : '▼') : ''}
                 </th>
                 <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Tenure
                 </th>
-                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
-                  Status
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center cursor-pointer" onClick={() => toggleSort('status')}>
+                  Status {sortConfig.key==='status' ? (sortConfig.direction==='asc' ? '▲' : '▼') : ''}
                 </th>
                 <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
                   Actions
@@ -383,7 +434,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {filteredBorrowersWithLoans.length === 0 ? (
+              {sortedBorrowersWithLoans.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-6 py-4 text-center text-gray-300">
                     {searchQuery.trim() 
@@ -393,7 +444,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                   </td>
                 </tr>
               ) : (
-                filteredBorrowersWithLoans.map((borrower, index) => {
+                sortedBorrowersWithLoans.map((borrower, index) => {
                   const loans = borrower.loans || [];
                   const hasMultipleLoans = loans.length > 1;
                   const isExpanded = expandedBorrowers.has(borrower.id);
@@ -413,19 +464,19 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                           <span>{borrower.name ? borrower.name.charAt(0).toUpperCase() : '?'}</span>
                         </div>
                         <div className="font-medium text-white">
-                          {highlightText(borrower.name, searchQuery)}
+                          {highlightField(borrower.name, 'borrower')}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="text-sm">
-                        <div className="text-white">{highlightText(borrower.phone, searchQuery)}</div>
-                        <div className="text-xs text-gray-300">{highlightText(borrower.address, searchQuery)}</div>
+                        <div className="text-white">{highlightField(borrower.phone, 'other')}</div>
+                        <div className="text-xs text-gray-300">{highlightField(borrower.address, 'borrower_address')}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="text-sm text-white">
-                        {borrower.guarantorName ? highlightText(borrower.guarantorName, searchQuery) : "-"}
+                        {borrower.guarantorName ? highlightField(borrower.guarantorName, 'guarantor') : "-"}
                       </div>
                     </td>
                         <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
@@ -480,26 +531,26 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                               </div>
                               <div>
                                 <div className="font-medium text-white">
-                                  {highlightText(borrower.name, searchQuery)}
+                                  {highlightField(borrower.name, 'borrower')}
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 text-center">
                             <div className="text-sm">
-                              <div className="text-white">{highlightText(borrower.phone, searchQuery)}</div>
-                              <div className="text-xs text-gray-300">{highlightText(borrower.address, searchQuery)}</div>
+                              <div className="text-white">{highlightField(borrower.phone, 'other')}</div>
+                              <div className="text-xs text-gray-300">{highlightField(borrower.address, 'borrower_address')}</div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <div className="text-sm text-white">
                               <div className="font-medium">
-                                {highlightText(loan.guarantorName || borrower.guarantorName || "-", searchQuery)}
+                                {highlightField(loan.guarantorName || borrower.guarantorName || "-", 'guarantor')}
                               </div>
                               <div className="text-xs text-gray-300">
-                                {highlightText(loan.guarantorPhone || borrower.guarantorPhone || "", searchQuery)}
+                                {highlightField(loan.guarantorPhone || borrower.guarantorPhone || "", 'other')}
                                 {loan.guarantorPhone || borrower.guarantorPhone ? <br /> : null}
-                                {highlightText(loan.guarantorAddress || borrower.guarantorAddress || "", searchQuery)}
+                                {highlightField(loan.guarantorAddress || borrower.guarantorAddress || "", 'guarantor_address')}
                               </div>
                             </div>
                           </td>
@@ -513,7 +564,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <span className="font-medium text-white">
-                              {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
+                              {highlightField(getLoanStrategyDisplay(loan.loanStrategy), 'other')}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center text-white">
@@ -586,7 +637,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                                 </div>
                                 <div>
                                   <div className="font-medium text-white">
-                                    {highlightText(borrower.name, searchQuery)}
+                                    {highlightField(borrower.name, 'borrower')}
                                   </div>
                                   {!isExpanded && (
                                     <div className="text-xs text-gray-400">
@@ -598,8 +649,8 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                             </td>
                             <td className="px-6 py-4 text-center">
                               <div className="text-sm">
-                                <div className="text-white">{highlightText(borrower.phone, searchQuery)}</div>
-                                <div className="text-xs text-gray-300">{highlightText(borrower.address, searchQuery)}</div>
+                                <div className="text-white">{highlightField(borrower.phone, 'other')}</div>
+                                <div className="text-xs text-gray-300">{highlightField(borrower.address, 'borrower_address')}</div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -673,12 +724,12 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="text-sm text-white">
                                 <div className="font-medium">
-                                  {highlightText(loan.guarantorName || borrower.guarantorName || "-", searchQuery)}
+                                  {highlightField(loan.guarantorName || borrower.guarantorName || "-", 'guarantor')}
                                 </div>
                                 <div className="text-xs text-gray-300">
-                                  {highlightText(loan.guarantorPhone || borrower.guarantorPhone || "", searchQuery)}
+                                  {highlightField(loan.guarantorPhone || borrower.guarantorPhone || "", 'other')}
                                   {loan.guarantorPhone || borrower.guarantorPhone ? <br /> : null}
-                                  {highlightText(loan.guarantorAddress || borrower.guarantorAddress || "", searchQuery)}
+                                  {highlightField(loan.guarantorAddress || borrower.guarantorAddress || "", 'guarantor_address')}
                                 </div>
                               </div>
                             </td>
@@ -692,7 +743,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white">
-                                {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
+                                {highlightField(getLoanStrategyDisplay(loan.loanStrategy), 'other')}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center text-white">
@@ -744,12 +795,12 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="text-sm text-white">
                                 <div className="font-medium">
-                                  {highlightText(loan.guarantorName || borrower.guarantorName || "-", searchQuery)}
+                                  {highlightField(loan.guarantorName || borrower.guarantorName || "-", 'guarantor')}
                                 </div>
                                 <div className="text-xs text-gray-300">
-                                  {highlightText(loan.guarantorPhone || borrower.guarantorPhone || "", searchQuery)}
+                                  {highlightField(loan.guarantorPhone || borrower.guarantorPhone || "", 'other')}
                                   {loan.guarantorPhone || borrower.guarantorPhone ? <br /> : null}
-                                  {highlightText(loan.guarantorAddress || borrower.guarantorAddress || "", searchQuery)}
+                                  {highlightField(loan.guarantorAddress || borrower.guarantorAddress || "", 'guarantor_address')}
                                 </div>
                               </div>
                             </td>
@@ -763,7 +814,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", activeTab }: BorrowerTable
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="font-medium text-white">
-                                {highlightText(getLoanStrategyDisplay(loan.loanStrategy), searchQuery)}
+                                {highlightField(getLoanStrategyDisplay(loan.loanStrategy), 'other')}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center text-white">
