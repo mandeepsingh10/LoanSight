@@ -136,10 +136,10 @@ const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }:
       return borrowersWithLoansData;
     },
     enabled: borrowers.length > 0,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 120000, // Refetch every 2 minutes
     refetchOnMount: true, // Refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-    staleTime: 0 // Consider data stale immediately
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    staleTime: 60000 // Consider data fresh for 1 minute
   });
 
   // Fetch payments to detect defaulters
@@ -150,10 +150,10 @@ const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }:
       if (!response.ok) throw new Error("Failed to fetch payments");
       return response.json();
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 120000, // Refetch every 2 minutes
     refetchOnMount: true, // Refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-    staleTime: 0 // Consider data stale immediately
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    staleTime: 60000 // Consider data fresh for 1 minute
   });
 
   // Function to check if a borrower is a defaulter (2+ consecutive missed payments)

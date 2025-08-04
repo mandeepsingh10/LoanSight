@@ -37,10 +37,10 @@ export default function Defaulters() {
       if (!response.ok) throw new Error("Failed to fetch payments");
       return response.json();
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 120000, // Refetch every 2 minutes
     refetchOnMount: true, // Refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-    staleTime: 0 // Consider data stale immediately
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    staleTime: 60000 // Consider data fresh for 1 minute
   });
 
   // Fetch borrowers first
@@ -51,10 +51,10 @@ export default function Defaulters() {
       if (!response.ok) throw new Error("Failed to fetch borrowers");
       return response.json();
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 120000, // Refetch every 2 minutes
     refetchOnMount: true, // Refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-    staleTime: 0 // Consider data stale immediately
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    staleTime: 60000 // Consider data fresh for 1 minute
   });
 
   // Then fetch all loans for each borrower
@@ -72,10 +72,10 @@ export default function Defaulters() {
       return borrowersWithLoans;
     },
     enabled: borrowers.length > 0,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 120000, // Refetch every 2 minutes
     refetchOnMount: true, // Refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-    staleTime: 0 // Consider data stale immediately
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    staleTime: 60000 // Consider data fresh for 1 minute
   });
 
   const isLoading = paymentsLoading || borrowersLoading || loansLoading;
