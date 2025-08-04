@@ -20,73 +20,133 @@ interface DefaulterDisplay {
   latestDaysOverdue: number;
   consecutiveMissed: number;
   totalOutstanding: number;
+  defaultedLoans: number; // Number of loans in default
+  defaultedLoanIds: number[]; // IDs of defaulted loans
 }
 
 export default function Defaulters() {
   const [selectedBorrower, setSelectedBorrower] = useState<number | null>(null);
 
   // Fetch all payments with borrower information
-  const { data: payments = [], isLoading } = useQuery({
+  const { data: payments = [], isLoading: paymentsLoading } = useQuery({
     queryKey: ["/api/payments"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/payments");
+      if (!response.ok) throw new Error("Failed to fetch payments");
+      return response.json();
+    }
   });
 
-  // Fetch borrowers to get full details
-  const { data: borrowers = [] } = useQuery({
+  // Fetch borrowers first
+  const { data: borrowers = [], isLoading: borrowersLoading } = useQuery({
     queryKey: ["/api/borrowers"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/borrowers");
+      if (!response.ok) throw new Error("Failed to fetch borrowers");
+      return response.json();
+    }
   });
+
+  // Then fetch all loans for each borrower
+  const { data: borrowersWithLoans = [], isLoading: loansLoading } = useQuery({
+    queryKey: ["/api/borrowers/loans", borrowers],
+    queryFn: async () => {
+      const borrowersWithLoans = await Promise.all(
+        borrowers.map(async (borrower: any) => {
+          const response = await apiRequest("GET", `/api/borrowers/${borrower.id}/loans`);
+          if (!response.ok) return { ...borrower, loans: [] };
+          const loans = await response.json();
+          return { ...borrower, loans };
+        })
+      );
+      return borrowersWithLoans;
+    },
+    enabled: borrowers.length > 0
+  });
+
+  const isLoading = paymentsLoading || borrowersLoading || loansLoading;
 
   // Generate defaulters (borrowers with 2+ consecutive missed payments)
   const getDefaulters = () => {
-    if (!Array.isArray(payments) || !Array.isArray(borrowers)) return [];
+    if (!Array.isArray(payments) || !Array.isArray(borrowersWithLoans)) return [];
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Group payments by borrower
-    const borrowerPayments: { [key: number]: any[] } = {};
+    // Group payments by borrower and loan
+    const borrowerPayments: { [key: number]: any } = {};
     
-    payments.forEach((payment: any) => {
-      if (payment.status === "collected") return;
+    // Process each borrower's loans and payments
+    borrowersWithLoans.forEach((borrower: any) => {
+      const borrowerLoans = borrower.loans || [];
       
-      const dueDate = new Date(payment.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
+      // Skip if no loans
+      if (borrowerLoans.length === 0) return;
       
-      if (dueDate >= today) return; // Not overdue yet
-      
-      const borrower = borrowers.find((b: any) => b.loan?.id === payment.loanId);
-      if (!borrower) return;
-      
-      // Include borrowers with defaulted loans (prioritize defaulter over completed)
-      // Only skip if the loan is completed and not defaulted
-      if (borrower.loan?.status === 'completed' && borrower.loan?.status !== 'defaulted') return;
-      
-      if (!borrowerPayments[borrower.id]) {
-        borrowerPayments[borrower.id] = [];
-      }
-      
-      const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      borrowerPayments[borrower.id].push({
-        ...payment,
+      // Initialize borrower's payment tracking
+      borrowerPayments[borrower.id] = {
+        loans: new Map(),
         borrower,
-        daysOverdue
+        defaultedLoans: 0,
+        defaultedLoanIds: [],
+        totalOutstanding: 0,
+        maxDaysOverdue: 0,
+        totalMissedPayments: 0
+      };
+      
+      // Process each loan
+      borrowerLoans.forEach(loan => {
+        // Skip completed loans unless marked as defaulted
+        if (loan.status === 'completed' && loan.status !== 'defaulted') return;
+        
+        // Get payments for this loan
+        const loanPayments = payments.filter((payment: any) => {
+          if (payment.status === "collected") return false;
+          if (payment.loanId !== loan.id) return false;
+          
+          const dueDate = new Date(payment.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+          
+          if (dueDate >= today) return false; // Not overdue yet
+          
+          return true;
+        });
+        
+        // Skip if less than 2 missed payments
+        if (loanPayments.length < 2) return;
+        
+        // Calculate days overdue for each payment
+        const paymentsWithOverdue = loanPayments.map(payment => {
+          const dueDate = new Date(payment.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+          const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+          return { ...payment, daysOverdue, loan };
+        });
+        
+        // Update borrower's default statistics
+        borrowerPayments[borrower.id].loans.set(loan.id, paymentsWithOverdue);
+        borrowerPayments[borrower.id].defaultedLoans++;
+        borrowerPayments[borrower.id].defaultedLoanIds.push(loan.id);
+        borrowerPayments[borrower.id].totalOutstanding += paymentsWithOverdue.reduce((sum, p) => sum + p.amount, 0);
+        borrowerPayments[borrower.id].maxDaysOverdue = Math.max(
+          borrowerPayments[borrower.id].maxDaysOverdue,
+          Math.max(...paymentsWithOverdue.map(p => p.daysOverdue))
+        );
+        borrowerPayments[borrower.id].totalMissedPayments += paymentsWithOverdue.length;
       });
+      
+      // Remove borrowers with no defaulted loans
+      if (borrowerPayments[borrower.id].defaultedLoans === 0) {
+        delete borrowerPayments[borrower.id];
+      }
     });
     
-    // Find borrowers with 2+ missed payments
-    const defaulters: DefaulterDisplay[] = [];
-    
-    Object.entries(borrowerPayments).forEach(([borrowerId, payments]) => {
-      if (payments.length >= 2) {
-        // Sort by days overdue descending
-        const sorted = payments.sort((a, b) => b.daysOverdue - a.daysOverdue);
-        const latestPayment = sorted[0];
-        const borrower = latestPayment.borrower;
-
-        // Calculate total outstanding
-        const totalOutstanding = payments.reduce((sum, p) => sum + p.amount, 0);
-
-        defaulters.push({
+    // Convert to defaulters array
+    const defaulters: DefaulterDisplay[] = Object.entries(borrowerPayments)
+      .map(([borrowerId, data]: [string, any]) => {
+        const { borrower, defaultedLoans, defaultedLoanIds, totalOutstanding, maxDaysOverdue, totalMissedPayments } = data;
+        
+        return {
           borrowerId: parseInt(borrowerId),
           borrowerName: borrower.name,
           borrowerPhone: borrower.phone,
@@ -94,16 +154,23 @@ export default function Defaulters() {
           guarantorName: borrower.guarantorName || 'N/A',
           guarantorPhone: borrower.guarantorPhone || 'N/A',
           guarantorAddress: borrower.guarantorAddress || 'N/A',
-          latestAmount: latestPayment.amount,
-          latestDueDate: latestPayment.dueDate,
-          latestDaysOverdue: latestPayment.daysOverdue,
-          consecutiveMissed: payments.length,
-          totalOutstanding
-        });
-      }
-    });
+          latestAmount: totalOutstanding / totalMissedPayments, // Average payment amount
+          latestDueDate: new Date().toISOString(), // Current date as reference
+          latestDaysOverdue: maxDaysOverdue,
+          consecutiveMissed: totalMissedPayments,
+          totalOutstanding,
+          defaultedLoans,
+          defaultedLoanIds
+        };
+      });
     
-    return defaulters.sort((a, b) => b.latestDaysOverdue - a.latestDaysOverdue);
+    // Sort defaulters by number of defaulted loans first, then by days overdue
+    return defaulters.sort((a, b) => {
+      if (b.defaultedLoans !== a.defaultedLoans) {
+        return b.defaultedLoans - a.defaultedLoans;
+      }
+      return b.latestDaysOverdue - a.latestDaysOverdue;
+    });
   };
 
   const defaulters = getDefaulters();
@@ -141,7 +208,15 @@ export default function Defaulters() {
                           <User className="h-6 w-6" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-white">{defaulter.borrowerName}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-white">{defaulter.borrowerName}</h3>
+                            <Badge 
+                              variant="destructive" 
+                              className={`${defaulter.defaultedLoans > 1 ? 'bg-red-700' : ''}`}
+                            >
+                              {defaulter.defaultedLoans > 1 ? 'Multiple Defaults' : 'Single Default'}
+                            </Badge>
+                          </div>
                           <p className="text-sm text-gray-300">{defaulter.borrowerPhone}</p>
                           <p className="text-sm text-gray-400">{defaulter.borrowerAddress}</p>
                           <div className="mt-2">
@@ -151,10 +226,15 @@ export default function Defaulters() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <Badge variant="destructive" className="mb-2">
-                          {defaulter.latestDaysOverdue} days overdue
-                        </Badge>
-                        <p className="text-2xl font-bold text-red-400">
+                        <div className="flex flex-col gap-2 items-end">
+                          <Badge variant="destructive">
+                            {defaulter.latestDaysOverdue} days overdue
+                          </Badge>
+                          <Badge variant="outline" className="border-red-500 text-red-400">
+                            {defaulter.defaultedLoans} {defaulter.defaultedLoans === 1 ? 'loan' : 'loans'} defaulted
+                          </Badge>
+                        </div>
+                        <p className="text-2xl font-bold text-red-400 mt-2">
                           {formatCurrency(defaulter.totalOutstanding)}
                         </p>
                       </div>
@@ -162,7 +242,7 @@ export default function Defaulters() {
                   </CardContent>
                   {/* Bottom summary message */}
                   <div className="px-6 pb-4 text-sm text-white/80">
-                    {`${defaulter.borrowerName} has missed ${defaulter.consecutiveMissed} payments of ${formatCurrency(defaulter.totalOutstanding)}`}
+                    {`${defaulter.borrowerName} has defaulted on ${defaulter.defaultedLoans} ${defaulter.defaultedLoans === 1 ? 'loan' : 'loans'} with ${defaulter.consecutiveMissed} total missed payments, amounting to ${formatCurrency(defaulter.totalOutstanding)}`}
                   </div>
                 </Card>
               ))}
