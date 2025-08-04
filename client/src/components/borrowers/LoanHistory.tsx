@@ -72,6 +72,10 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
       console.log("Loans data received:", data);
       return data;
     },
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
   });
 
   // Delete loan mutation
@@ -155,6 +159,15 @@ export const LoanHistory = ({ borrowerId, onAddLoan, onViewLoan }: LoanHistoryPr
   // Fetch payments for all loans to determine defaulted status (define early)
   const { data: allPayments = [] } = useReactQuery({
     queryKey: ["/api/payments", borrowerId],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/payments");
+      if (!response.ok) throw new Error("Failed to fetch payments");
+      return response.json();
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
   });
 
   // Add helper before filtering

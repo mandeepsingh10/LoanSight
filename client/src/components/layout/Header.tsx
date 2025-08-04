@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Menu, Search, LogOut, User, ChevronDown, FileText, BarChart3, Users, AlertTriangle, Settings, CreditCard, ArrowLeft } from "lucide-react";
+import { Menu, Search, LogOut, User, ChevronDown, FileText, BarChart3, Users, AlertTriangle, Settings, CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import {
 import { useContext } from "react";
 import { AppContext } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 interface HeaderProps {
   sidebarOpen: boolean;
@@ -25,6 +27,80 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
   const [location] = useLocation();
   const { searchQuery, setSearchQuery } = useContext(AppContext);
   const { logout, username, role, isAdmin } = useAuth();
+
+  // Fetch borrowers count
+  const { data: borrowersCount = 0 } = useQuery({
+    queryKey: ["/api/borrowers/count"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/borrowers");
+      if (!response.ok) return 0;
+      const borrowers = await response.json();
+      return borrowers.length;
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
+  });
+
+  // Fetch defaulters count
+  const { data: defaultersCount = 0 } = useQuery({
+    queryKey: ["/api/defaulters/count"],
+    queryFn: async () => {
+      // First get all payments and borrowers
+      const [paymentsRes, borrowersRes] = await Promise.all([
+        apiRequest("GET", "/api/payments"),
+        apiRequest("GET", "/api/borrowers")
+      ]);
+
+      if (!paymentsRes.ok || !borrowersRes.ok) return 0;
+
+      const [payments, borrowers] = await Promise.all([
+        paymentsRes.json(),
+        borrowersRes.json()
+      ]);
+
+      // Then get all loans for each borrower
+      const borrowersWithLoans = await Promise.all(
+        borrowers.map(async (borrower: any) => {
+          const response = await apiRequest("GET", `/api/borrowers/${borrower.id}/loans`);
+          if (!response.ok) return { ...borrower, loans: [] };
+          const loans = await response.json();
+          return { ...borrower, loans };
+        })
+      );
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Count defaulted loans
+      let defaultedLoansCount = 0;
+
+      borrowersWithLoans.forEach((borrower: any) => {
+        const borrowerLoans = borrower.loans || [];
+        borrowerLoans.forEach(loan => {
+          if (loan.status === 'completed' && loan.status !== 'defaulted') return;
+
+          const loanPayments = payments.filter((payment: any) => {
+            if (payment.status === "collected" || payment.loanId !== loan.id) return false;
+            const dueDate = new Date(payment.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+            return dueDate < today;
+          });
+
+          if (loanPayments.length >= 2) {
+            defaultedLoansCount++;
+          }
+        });
+      });
+
+      return defaultedLoansCount;
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
+  });
 
   const tabTitles: Record<string, string> = {
     "/": "Dashboard",
@@ -66,7 +142,12 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                   return (
                     <div className="flex items-center space-x-3">
                       <Users className="h-8 w-8 text-white" />
-                      <h2 className="text-2xl font-bold text-white">Borrowers</h2>
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-2xl font-bold text-white">Borrowers</h2>
+                        <Badge variant="secondary" className="text-sm">
+                          {borrowersCount}
+                        </Badge>
+                      </div>
                     </div>
                   );
                 case "/payments":
@@ -80,7 +161,12 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                   return (
                     <div className="flex items-center space-x-3">
                       <AlertTriangle className="h-8 w-8 text-white" />
-                      <h2 className="text-2xl font-bold text-white">Defaulters</h2>
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-2xl font-bold text-white">Defaulters</h2>
+                        <Badge variant="destructive" className="text-sm">
+                          {defaultersCount}
+                        </Badge>
+                      </div>
                     </div>
                   );
                 case "/reports":
@@ -115,18 +201,9 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
                   // Check if it's an edit borrower or borrower details route
                   if (location.startsWith('/edit-borrower/') || location.startsWith('/borrower-details/')) {
                     return (
-                      <div className="flex items-center w-full">
-                        <Button
-                          variant="ghost"
-                          onClick={() => window.location.href = '/borrowers'}
-                          className="flex items-center gap-2 text-gray-300 hover:text-white hover:bg-gray-800 p-3 absolute left-6"
-                        >
-                          <ArrowLeft className="h-6 w-6" />
-                        </Button>
-                        <div className="flex items-center space-x-3 mx-auto">
-                          <Users className="h-8 w-8 text-white" />
-                          <h2 className="text-2xl font-bold text-white">Borrower Details</h2>
-                        </div>
+                      <div className="flex items-center space-x-3">
+                        <Users className="h-8 w-8 text-white" />
+                        <h2 className="text-2xl font-bold text-white">Borrower Details</h2>
                       </div>
                     );
                   }

@@ -7,15 +7,178 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Defaulter Detection Enhancement**: Improved defaulter detection logic to handle multiple loans per borrower correctly
+- **Automatic Data Refresh**: Added automatic refetching for all major components (defaulters, borrowers, loan history, borrower details)
+- **Header Count Badges**: Added defaulter and borrower count badges to page headers
+- **Back Button Removal**: Removed back button from borrower details page for cleaner navigation
+- **Table Improvements**: Added "No." column to defaulters card and improved styling consistency
+
+### Changed
+- **Defaulter Page Redesign**: Transformed defaulters page from card layout to comprehensive table format
+- **Dashboard Defaulters Card**: Improved styling with better badge layout and removed redundant information
+- **Performance Optimization**: Reduced query refetch frequency from 30 seconds to 2 minutes to improve tab switching performance
+- **Navigation Enhancement**: Updated defaulters page eye icon to navigate to borrower details instead of showing modal
+
 ### Fixed
 - **Issue #8 – Payments Page Loading State**: Fixed white glow/flash when switching to Payments tab by simplifying loading state to match other pages' pattern.
+- **Multi-Loan Defaulter Detection**: Fixed issue where borrowers with multiple defaulted loans weren't being correctly identified
+- **Performance Issues**: Resolved slow tab switching caused by aggressive data refetching
+- **Defaulter Count Accuracy**: Fixed defaulter count showing as zero in header due to state management issues
 
 ### Technical Details
 
 #### Files Modified
 1. `client/src/pages/payments.tsx`
+2. `client/src/pages/defaulters.tsx`
+3. `client/src/components/dashboard/RecentDefaulters.tsx`
+4. `client/src/components/borrowers/BorrowerTable.tsx`
+5. `client/src/components/borrowers/BorrowerDetails.tsx`
+6. `client/src/components/borrowers/LoanHistory.tsx`
+7. `client/src/components/layout/Header.tsx`
 
 #### Key Logic Changes
+
+---
+
+### Defaulter Detection Enhancement
+
+**Files Modified**
+1. `client/src/pages/defaulters.tsx`
+2. `client/src/components/dashboard/RecentDefaulters.tsx`
+
+**Before:**
+```typescript
+// Only considered single loan per borrower
+borrowers.forEach((borrower: any) => {
+  const loan = borrower.loan; // Single loan assumption
+  // Process single loan
+});
+```
+
+**After:**
+```typescript
+// Fetch all loans for each borrower
+const borrowersWithLoans = await Promise.all(
+  borrowers.map(async (borrower: any) => {
+    const response = await apiRequest("GET", `/api/borrowers/${borrower.id}/loans`);
+    const loans = await response.json();
+    return { ...borrower, loans };
+  })
+);
+
+// Process each loan independently
+borrowersWithLoans.forEach((borrower: any) => {
+  borrower.loans.forEach(loan => {
+    // Process each loan separately
+  });
+});
+```
+
+---
+
+### Performance Optimization
+
+**Files Modified**
+1. `client/src/pages/defaulters.tsx`
+2. `client/src/components/borrowers/BorrowerTable.tsx`
+3. `client/src/components/borrowers/BorrowerDetails.tsx`
+4. `client/src/components/borrowers/LoanHistory.tsx`
+
+**Before:**
+```typescript
+refetchInterval: 30000, // Refetch every 30 seconds
+refetchOnWindowFocus: true, // Refetch when window regains focus
+staleTime: 0 // Consider data stale immediately
+```
+
+**After:**
+```typescript
+refetchInterval: 120000, // Refetch every 2 minutes
+refetchOnWindowFocus: false, // Don't refetch on window focus
+staleTime: 60000 // Consider data fresh for 1 minute
+```
+
+---
+
+### Header Count Badges
+
+**Files Modified**
+1. `client/src/components/layout/Header.tsx`
+
+**Added:**
+```typescript
+// Defaulter count query
+const { data: defaultersCount = 0 } = useQuery({
+  queryKey: ["/api/defaulters/count"],
+  queryFn: async () => {
+    // Fetch all payments and borrowers, then calculate defaulter count
+    // ... implementation
+  }
+});
+
+// Borrower count query
+const { data: borrowersCount = 0 } = useQuery({
+  queryKey: ["/api/borrowers/count"],
+  queryFn: async () => {
+    const response = await apiRequest("GET", "/api/borrowers");
+    const borrowers = await response.json();
+    return borrowers.length;
+  }
+});
+```
+
+---
+
+### Defaulter Page Redesign
+
+**Files Modified**
+1. `client/src/pages/defaulters.tsx`
+
+**Before:**
+```typescript
+// Card-based layout with modal
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {defaulters.map(defaulter => (
+    <Card>
+      <CardContent>
+        // Card content
+      </CardContent>
+    </Card>
+  ))}
+</div>
+```
+
+**After:**
+```typescript
+// Table-based layout with navigation
+<table className="w-full">
+  <thead>
+    <tr>
+      <th>No.</th>
+      <th>Borrower</th>
+      <th>Contact</th>
+      // ... other columns
+    </tr>
+  </thead>
+  <tbody>
+    {defaulters.map((defaulter, index) => (
+      <tr>
+        <td>{index + 1}</td>
+        <td>{defaulter.borrowerName}</td>
+        // ... other cells
+      </tr>
+    ))}
+  </tbody>
+</table>
+```
+
+---
+
+### Payments Page Loading State Fix
+
+**Files Modified**
+1. `client/src/pages/payments.tsx`
 
 **Before:**
 ```typescript

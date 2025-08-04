@@ -5,6 +5,8 @@ interface AppContextType {
   setSearchQuery: (query: string) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+  defaultersCount: number;
+  setDefaultersCount: (count: number) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -12,6 +14,8 @@ export const AppContext = createContext<AppContextType>({
   setSearchQuery: () => {},
   sidebarOpen: true,
   setSidebarOpen: () => {},
+  defaultersCount: 0,
+  setDefaultersCount: () => {},
 });
 
 interface AppProviderProps {
@@ -21,6 +25,7 @@ interface AppProviderProps {
 export const AppProvider = ({ children }: AppProviderProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [defaultersCount, setDefaultersCount] = useState(0);
 
   return (
     <AppContext.Provider
@@ -29,6 +34,8 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         setSearchQuery,
         sidebarOpen,
         setSidebarOpen,
+        defaultersCount,
+        setDefaultersCount,
       }}
     >
       {children}

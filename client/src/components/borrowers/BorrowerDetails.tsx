@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { CheckCircle, AlertCircle, Clock, Check, ChevronDown, Edit, Trash2, Save, X, Upload, Camera, Eye, MoreVertical, ArrowLeft, User, Pencil, Shield, BarChart2, StickyNote, BookOpen } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, Check, ChevronDown, Edit, Trash2, Save, X, Upload, Camera, Eye, MoreVertical, User, Pencil, Shield, BarChart2, StickyNote, BookOpen } from "lucide-react";
 import { Payment } from "@/types";
 import {
   Card,
@@ -126,6 +126,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
       return data;
     },
     enabled: isOpen && borrowerId > 0,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
   });
 
   // Fetch loan details
@@ -142,6 +146,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
       return sortedLoans;
     },
     enabled: isOpen && borrowerId > 0,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
   });
 
   // Fetch payment schedule
@@ -178,6 +186,10 @@ export const BorrowerDetails = ({ borrowerId, isOpen, onClose, fullScreen = fals
       return [];
     },
     enabled: isOpen && borrowerId > 0 && loans !== undefined,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
   });
 
   // Initialize form data when borrower data loads
