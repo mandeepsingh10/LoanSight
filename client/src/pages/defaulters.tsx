@@ -1,11 +1,12 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, User } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useLocation } from "wouter";
+import { AlertTriangle, User, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { formatDate } from "@/lib/date-utils";
-import { BorrowerDetails } from "@/components/borrowers/BorrowerDetails";
+import { apiRequest } from "@/lib/queryClient";
+
 
 interface DefaulterDisplay {
   borrowerId: number;
@@ -15,17 +16,18 @@ interface DefaulterDisplay {
   guarantorName: string;
   guarantorPhone: string;
   guarantorAddress: string;
-  latestAmount: number;
-  latestDueDate: string;
-  latestDaysOverdue: number;
-  consecutiveMissed: number;
+  loanId: number;
+  loanAmount: number;
+  startDate: string;
+  tenure: number | null;
+  loanType: string;
+  missedPayments: number;
+  maxDaysOverdue: number;
   totalOutstanding: number;
-  defaultedLoans: number; // Number of loans in default
-  defaultedLoanIds: number[]; // IDs of defaulted loans
 }
 
 export default function Defaulters() {
-  const [selectedBorrower, setSelectedBorrower] = useState<number | null>(null);
+  const [, navigate] = useLocation();
 
   // Fetch all payments with borrower information
   const { data: payments = [], isLoading: paymentsLoading } = useQuery({
@@ -34,7 +36,11 @@ export default function Defaulters() {
       const response = await apiRequest("GET", "/api/payments");
       if (!response.ok) throw new Error("Failed to fetch payments");
       return response.json();
-    }
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
   });
 
   // Fetch borrowers first
@@ -44,7 +50,11 @@ export default function Defaulters() {
       const response = await apiRequest("GET", "/api/borrowers");
       if (!response.ok) throw new Error("Failed to fetch borrowers");
       return response.json();
-    }
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
   });
 
   // Then fetch all loans for each borrower
@@ -61,7 +71,11 @@ export default function Defaulters() {
       );
       return borrowersWithLoans;
     },
-    enabled: borrowers.length > 0
+    enabled: borrowers.length > 0,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
   });
 
   const isLoading = paymentsLoading || borrowersLoading || loansLoading;
@@ -73,26 +87,14 @@ export default function Defaulters() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Group payments by borrower and loan
-    const borrowerPayments: { [key: number]: any } = {};
-    
     // Process each borrower's loans and payments
+    const defaultedLoans: any[] = [];
+    
     borrowersWithLoans.forEach((borrower: any) => {
       const borrowerLoans = borrower.loans || [];
       
       // Skip if no loans
       if (borrowerLoans.length === 0) return;
-      
-      // Initialize borrower's payment tracking
-      borrowerPayments[borrower.id] = {
-        loans: new Map(),
-        borrower,
-        defaultedLoans: 0,
-        defaultedLoanIds: [],
-        totalOutstanding: 0,
-        maxDaysOverdue: 0,
-        totalMissedPayments: 0
-      };
       
       // Process each loan
       borrowerLoans.forEach(loan => {
@@ -120,60 +122,44 @@ export default function Defaulters() {
           const dueDate = new Date(payment.dueDate);
           dueDate.setHours(0, 0, 0, 0);
           const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-          return { ...payment, daysOverdue, loan };
+          return { ...payment, daysOverdue };
         });
         
-        // Update borrower's default statistics
-        borrowerPayments[borrower.id].loans.set(loan.id, paymentsWithOverdue);
-        borrowerPayments[borrower.id].defaultedLoans++;
-        borrowerPayments[borrower.id].defaultedLoanIds.push(loan.id);
-        borrowerPayments[borrower.id].totalOutstanding += paymentsWithOverdue.reduce((sum, p) => sum + p.amount, 0);
-        borrowerPayments[borrower.id].maxDaysOverdue = Math.max(
-          borrowerPayments[borrower.id].maxDaysOverdue,
-          Math.max(...paymentsWithOverdue.map(p => p.daysOverdue))
-        );
-        borrowerPayments[borrower.id].totalMissedPayments += paymentsWithOverdue.length;
-      });
-      
-      // Remove borrowers with no defaulted loans
-      if (borrowerPayments[borrower.id].defaultedLoans === 0) {
-        delete borrowerPayments[borrower.id];
-      }
-    });
-    
-    // Convert to defaulters array
-    const defaulters: DefaulterDisplay[] = Object.entries(borrowerPayments)
-      .map(([borrowerId, data]: [string, any]) => {
-        const { borrower, defaultedLoans, defaultedLoanIds, totalOutstanding, maxDaysOverdue, totalMissedPayments } = data;
+        // Sort by days overdue
+        const sortedPayments = paymentsWithOverdue.sort((a, b) => b.daysOverdue - a.daysOverdue);
+        const totalOutstanding = paymentsWithOverdue.reduce((sum, p) => sum + p.amount, 0);
         
-        return {
-          borrowerId: parseInt(borrowerId),
+        defaultedLoans.push({
+          borrowerId: borrower.id,
           borrowerName: borrower.name,
           borrowerPhone: borrower.phone,
           borrowerAddress: borrower.address,
           guarantorName: borrower.guarantorName || 'N/A',
           guarantorPhone: borrower.guarantorPhone || 'N/A',
           guarantorAddress: borrower.guarantorAddress || 'N/A',
-          latestAmount: totalOutstanding / totalMissedPayments, // Average payment amount
-          latestDueDate: new Date().toISOString(), // Current date as reference
-          latestDaysOverdue: maxDaysOverdue,
-          consecutiveMissed: totalMissedPayments,
-          totalOutstanding,
-          defaultedLoans,
-          defaultedLoanIds
-        };
+          loanId: loan.id,
+          loanAmount: loan.amount,
+          startDate: loan.startDate,
+          tenure: loan.tenure,
+          loanType: loan.loanStrategy,
+          missedPayments: loanPayments.length,
+          maxDaysOverdue: sortedPayments[0].daysOverdue,
+          totalOutstanding
+        });
       });
+    });
     
-    // Sort defaulters by number of defaulted loans first, then by days overdue
-    return defaulters.sort((a, b) => {
-      if (b.defaultedLoans !== a.defaultedLoans) {
-        return b.defaultedLoans - a.defaultedLoans;
-      }
-      return b.latestDaysOverdue - a.latestDaysOverdue;
+    // Sort by borrower name and then by loan ID
+    return defaultedLoans.sort((a, b) => {
+      const nameCompare = a.borrowerName.localeCompare(b.borrowerName);
+      if (nameCompare !== 0) return nameCompare;
+      return a.loanId - b.loanId;
     });
   };
 
   const defaulters = getDefaulters();
+
+
 
   if (isLoading) {
     return (
@@ -187,80 +173,124 @@ export default function Defaulters() {
 
   return (
     <div className="p-6 space-y-6 min-h-screen bg-black">
-        <Card className="bg-black border-gray-800">
-          <CardHeader>
-            <p className="text-gray-400">Borrowers with multiple missed payments (2 or more)</p>
-          </CardHeader>
-          <CardContent>
-          {defaulters.length === 0 ? (
-            <div className="text-center py-8">
-              <AlertTriangle className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">No defaulters found</p>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {defaulters.map((defaulter, index) => (
-                <Card key={`${defaulter.borrowerId}-${index}`} className="border-red-600 bg-black">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
+      <div className="bg-black rounded-lg shadow overflow-hidden border border-gray-700">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-900 text-left">
+              <tr>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider w-12">
+                  No.
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
+                  Borrower
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
+                  Contact
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
+                  Guarantor
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
+                  Loan Amount
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
+                  Start Date
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
+                  Loan Type
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
+                  Tenure
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider text-center">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-700">
+              {defaulters.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="px-6 py-4 text-center text-gray-300">
+                    No defaulters found
+                  </td>
+                </tr>
+              ) : (
+                defaulters.map((defaulter, index) => (
+                  <tr 
+                    key={`${defaulter.borrowerId}-${defaulter.loanId}`} 
+                    className={`hover:bg-[#111111] ${
+                      index > 0 && defaulters[index - 1].borrowerId === defaulter.borrowerId
+                        ? 'border-t-0' // Remove top border for subsequent loans of same borrower
+                        : ''
+                    }`}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-gray-400 font-medium">
+                      {index + 1}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center text-white mr-4">
-                          <User className="h-6 w-6" />
+                        <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white mr-3">
+                          <span>{defaulter.borrowerName.charAt(0).toUpperCase()}</span>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-semibold text-white">{defaulter.borrowerName}</h3>
-                            <Badge 
-                              variant="destructive" 
-                              className={`${defaulter.defaultedLoans > 1 ? 'bg-red-700' : ''}`}
-                            >
-                              {defaulter.defaultedLoans > 1 ? 'Multiple Defaults' : 'Single Default'}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-gray-300">{defaulter.borrowerPhone}</p>
-                          <p className="text-sm text-gray-400">{defaulter.borrowerAddress}</p>
-                          <div className="mt-2">
-                            <p className="text-sm font-medium text-white">Guarantor: {defaulter.guarantorName}</p>
-                            <p className="text-sm text-gray-300">{defaulter.guarantorPhone}</p>
-                          </div>
+                        <div className="font-medium text-white">
+                          {defaulter.borrowerName}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="flex flex-col gap-2 items-end">
-                          <Badge variant="destructive">
-                            {defaulter.latestDaysOverdue} days overdue
-                          </Badge>
-                          <Badge variant="outline" className="border-red-500 text-red-400">
-                            {defaulter.defaultedLoans} {defaulter.defaultedLoans === 1 ? 'loan' : 'loans'} defaulted
-                          </Badge>
-                        </div>
-                        <p className="text-2xl font-bold text-red-400 mt-2">
-                          {formatCurrency(defaulter.totalOutstanding)}
-                        </p>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="text-sm">
+                        <div className="text-white">{defaulter.borrowerPhone}</div>
+                        <div className="text-xs text-gray-300">{defaulter.borrowerAddress}</div>
                       </div>
-                    </div>
-                  </CardContent>
-                  {/* Bottom summary message */}
-                  <div className="px-6 pb-4 text-sm text-white/80">
-                    {`${defaulter.borrowerName} has defaulted on ${defaulter.defaultedLoans} ${defaulter.defaultedLoans === 1 ? 'loan' : 'loans'} with ${defaulter.consecutiveMissed} total missed payments, amounting to ${formatCurrency(defaulter.totalOutstanding)}`}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-        </Card>
-
-        {/* Borrower Details Modal */}
-        {selectedBorrower && (
-          <BorrowerDetails
-            borrowerId={selectedBorrower}
-            isOpen={!!selectedBorrower}
-            onClose={() => setSelectedBorrower(null)}
-            fullScreen={false}
-            readOnly={false}
-          />
-        )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="text-sm">
+                        <div className="text-white">{defaulter.guarantorName}</div>
+                        <div className="text-xs text-gray-300">{defaulter.guarantorPhone}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-white">
+                      {formatCurrency(defaulter.loanAmount)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-white">
+                      {formatDate(defaulter.startDate)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <Badge variant="outline" className="border-gray-500 text-gray-400">
+                        {defaulter.loanType === 'emi' ? 'EMI' :
+                         defaulter.loanType === 'flat' ? 'FLAT' :
+                         defaulter.loanType === 'custom' ? 'CUSTOM' :
+                         defaulter.loanType === 'gold_silver' ? 'GOLD/SILVER' :
+                         defaulter.loanType?.toUpperCase() || 'N/A'}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-white">
+                      {defaulter.tenure || 'N/A'} {defaulter.tenure ? 'months' : ''}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <Badge variant="destructive">
+                        {defaulter.missedPayments} missed
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigate(`/borrower-details/${defaulter.borrowerId}`)}
+                      >
+                        <Eye size={16} className="text-blue-400 hover:text-blue-300" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

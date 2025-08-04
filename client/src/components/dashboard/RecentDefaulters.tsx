@@ -225,18 +225,16 @@ const RecentDefaulters = () => {
           <User size={20} className="text-red-500" />
           Defaulters
         </CardTitle>
-        <Link href="/defaulters">
-          <Button variant="link" className="text-blue-400 font-medium hover:text-blue-300">
-            View All
-          </Button>
-        </Link>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           {defaulters.length > 0 ? (
             <table className="w-full">
-              <thead className="bg-gray-900 text-left">
+              <thead className="bg-gray-900 text-center">
                 <tr>
+                  <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider w-12">
+                    No.
+                  </th>
                   <th className="px-6 py-3 text-xs font-bold text-white uppercase tracking-wider">
                     Name
                   </th>
@@ -258,38 +256,26 @@ const RecentDefaulters = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
-                {defaulters.map((defaulter) => (
+                {defaulters.map((defaulter, index) => (
                   <tr key={defaulter.id} className="hover:bg-[#111111]">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white mr-3">
-                          <span>{defaulter.borrowerName ? defaulter.borrowerName.charAt(0) : '?'}</span>
-                        </div>
-                        <div className="text-white font-medium">{defaulter.borrowerName || 'Unknown'}</div>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-gray-400 font-medium">
+                      {index + 1}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="text-white font-medium">{defaulter.borrowerName || 'Unknown'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-white">{defaulter.phone}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <Badge variant="destructive" className="w-fit">
+                        {defaulter.consecutiveMissed}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="text-white font-medium">
+                        {formatCurrency(defaulter.totalOutstanding)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-white">{defaulter.phone}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col gap-1">
-                        <Badge variant="destructive">
-                          {defaulter.defaultedLoans} {defaulter.defaultedLoans === 1 ? 'loan' : 'loans'}
-                        </Badge>
-                        <span className="text-sm text-gray-400">
-                          {defaulter.consecutiveMissed} missed payments
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-white font-medium">
-                          {formatCurrency(defaulter.totalOutstanding)}
-                        </span>
-                        <span className="text-sm text-gray-400">
-                          {defaulter.maxDaysOverdue} days overdue
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
                       <Badge 
                         variant="destructive" 
                         className={`whitespace-nowrap ${defaulter.defaultedLoans > 1 ? 'bg-red-700' : ''}`}
@@ -297,7 +283,7 @@ const RecentDefaulters = () => {
                         {defaulter.defaultedLoans > 1 ? 'Multiple Defaults' : 'Single Default'}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
                       <Button 
                         variant="link" 
                         className="text-blue-400 hover:text-blue-300 text-sm font-medium h-auto p-0"

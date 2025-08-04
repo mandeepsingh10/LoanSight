@@ -135,12 +135,25 @@ const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }:
       
       return borrowersWithLoansData;
     },
-    enabled: borrowers.length > 0
+    enabled: borrowers.length > 0,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
   });
 
   // Fetch payments to detect defaulters
   const { data: payments = [] } = useQuery({
     queryKey: ["/api/payments"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/payments");
+      if (!response.ok) throw new Error("Failed to fetch payments");
+      return response.json();
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0 // Consider data stale immediately
   });
 
   // Function to check if a borrower is a defaulter (2+ consecutive missed payments)
