@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, DollarSign, Plus, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -57,8 +57,14 @@ const Borrowers = () => {
   const [showNewBorrowerModal, setShowNewBorrowerModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState(() => {
-    // Get the saved tab from localStorage, default to "cash"
-    return localStorage.getItem("borrowersActiveTab") || "cash";
+    // Check if we have a saved tab from editing a borrower
+    const savedTab = localStorage.getItem("borrowersActiveTab");
+    if (savedTab) {
+      // Clear it immediately so it doesn't persist
+      localStorage.removeItem("borrowersActiveTab");
+      return savedTab;
+    }
+    return "cash";
   });
   const [searchFilter, setSearchFilter] = useState("borrower"); // default to borrower | other options: all, guarantor, borrower_address, guarantor_address
   // Helper to get user-friendly loan strategy label (shared across component)
@@ -78,11 +84,12 @@ const Borrowers = () => {
   };
   const { isAdmin, role } = useAuth();
 
-  // Function to handle tab changes and save to localStorage
+  // Function to handle tab changes
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    localStorage.setItem("borrowersActiveTab", value);
   };
+
+
 
   const { data: allBorrowers, isLoading } = useQuery({
     queryKey: ["/api/borrowers"],

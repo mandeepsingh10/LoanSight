@@ -318,6 +318,13 @@ const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }:
     setExpandedBorrowers(newExpanded);
   };
 
+  // Function to handle edit navigation with tab saving
+  const handleEditBorrower = (borrowerId: number) => {
+    // Save the current active tab before navigating
+    localStorage.setItem("borrowersActiveTab", activeTab);
+    navigate(`/edit-borrower/${borrowerId}`);
+  };
+
   const getLoanStrategyDisplay = (strategy: string) => {
     switch (strategy) {
       case "emi":
@@ -513,7 +520,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }:
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => navigate(`/edit-borrower/${borrower.id}`)}
+                          onClick={() => handleEditBorrower(borrower.id)}
                         >
                           {isAdmin ? (
                             <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
@@ -601,7 +608,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }:
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                onClick={() => navigate(`/edit-borrower/${borrower.id}`)}
+                                onClick={() => handleEditBorrower(borrower.id)}
                               >
                                 {isAdmin ? (
                                   <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
@@ -706,11 +713,11 @@ const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }:
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="flex items-center justify-center space-x-3">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => navigate(`/edit-borrower/${borrower.id}`)}
-                                >
+                                                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleEditBorrower(borrower.id)}
+                              >
                                   {isAdmin ? (
                                     <Pencil size={16} className="text-blue-400 hover:text-blue-300" />
                                   ) : (
