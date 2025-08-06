@@ -56,7 +56,10 @@ const CoinIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const Borrowers = () => {
   const [showNewBorrowerModal, setShowNewBorrowerModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("cash");
+  const [activeTab, setActiveTab] = useState(() => {
+    // Get the saved tab from localStorage, default to "cash"
+    return localStorage.getItem("borrowersActiveTab") || "cash";
+  });
   const [searchFilter, setSearchFilter] = useState("borrower"); // default to borrower | other options: all, guarantor, borrower_address, guarantor_address
   // Helper to get user-friendly loan strategy label (shared across component)
   const getLoanStrategyDisplay = (strategy: string) => {
@@ -74,6 +77,12 @@ const Borrowers = () => {
     }
   };
   const { isAdmin, role } = useAuth();
+
+  // Function to handle tab changes and save to localStorage
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    localStorage.setItem("borrowersActiveTab", value);
+  };
 
   const { data: allBorrowers, isLoading } = useQuery({
     queryKey: ["/api/borrowers"],
@@ -264,7 +273,7 @@ const Borrowers = () => {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-900 p-1">
           <TabsTrigger 
             value="cash" 
