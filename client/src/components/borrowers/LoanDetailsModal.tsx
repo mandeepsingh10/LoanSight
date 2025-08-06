@@ -1074,7 +1074,7 @@ export const LoanDetailsModal = ({ loan, loanNumber, isOpen, onClose }: LoanDeta
           <div className="space-y-4">
             {(currentPaymentForHistory || selectedPaymentForHistory) && (
               <>
-                <div className={`grid grid-cols-2 gap-4 p-4 bg-gray-900 rounded-lg border-2 ${(currentPaymentForHistory || selectedPaymentForHistory).dueAmount && (currentPaymentForHistory || selectedPaymentForHistory).dueAmount > 0 ? 'border-red-500' : 'border-green-500'}`}>
+                <div className={`grid grid-cols-2 gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg border ${(currentPaymentForHistory || selectedPaymentForHistory).dueAmount && (currentPaymentForHistory || selectedPaymentForHistory).dueAmount > 0 ? 'border-red-500' : 'border-green-500'}`}>
                   <div>
                     <div className="text-sm text-gray-400">EMI Amount</div>
                     <div className="text-lg font-semibold text-white">{formatCurrency((currentPaymentForHistory || selectedPaymentForHistory).amount)}</div>
