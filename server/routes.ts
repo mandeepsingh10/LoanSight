@@ -1416,16 +1416,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Note: Users are not restored from backup for security reasons
       // Default users will be created on startup if no users exist
       
+      sendProgressUpdate(1, 'Starting restore process...');
+      
       console.log('Clearing existing data...');
       
       // Clear existing data using TRUNCATE CASCADE for complete cleanup
       // Note: Users table is not cleared to preserve admin access
       await db.execute(sql.raw('TRUNCATE TABLE payment_transactions, loan_items, payments, loans, borrowers RESTART IDENTITY CASCADE'));
       console.log('Tables cleared successfully (users preserved)');
+      sendProgressUpdate(5, 'Cleared existing data');
       
       // Restore photos if they exist
       if (photos && typeof photos === 'object') {
         console.log('Restoring photos...');
+        sendProgressUpdate(7, 'Restoring photos...');
         const photosDir = path.join(__dirname, '../uploads/photos');
         
         // Create photos directory if it doesn't exist
@@ -1443,7 +1447,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Restore photos from backup
         let totalSize = 0;
-        for (const [filename, photoData] of Object.entries(photos)) {
+        const photoEntries = Object.entries(photos);
+        for (let i = 0; i < photoEntries.length; i++) {
+          const [filename, photoData] = photoEntries[i];
           // Handle both old format (string) and new format (object)
           let base64Data: string;
           if (typeof photoData === 'string') {
@@ -1461,6 +1467,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Verify the photo URL in database matches the restored file
           console.log(`Restored photo: ${filename} -> ${filePath}`);
+          
+          // Update progress for each photo
+          const photoProgress = 7 + Math.floor((i + 1) / photoEntries.length * 8);
+          sendProgressUpdate(photoProgress, `Restored photo ${i + 1}/${photoEntries.length}`);
         }
         console.log(`Restored ${Object.keys(photos).length} photos (${totalSize} bytes total)`);
         
@@ -1484,6 +1494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.log('All photo URLs have corresponding files ✓');
         }
+        sendProgressUpdate(15, 'Photos restored successfully');
       }
       
       // Users are not restored from backup for security reasons
@@ -1491,10 +1502,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Skipping user restoration (users are not backed up for security)');
       
       console.log('Restoring borrowers...');
+      sendProgressUpdate(17, 'Restoring borrowers...');
       // Create a mapping from old IDs to new IDs
       const borrowerIdMapping = new Map();
       
-      for (const borrower of data.borrowers) {
+      for (let i = 0; i < data.borrowers.length; i++) {
+        const borrower = data.borrowers[i];
         // Ensure photoUrl is properly formatted for the new instance
         let photoUrl = borrower.photoUrl;
         if (photoUrl && !photoUrl.startsWith('/uploads/photos/')) {
@@ -1518,13 +1531,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           photoUrl: photoUrl
         });
         borrowerIdMapping.set(borrower.id, newBorrower.id);
+        
+        // Update progress for each borrower
+        const borrowerProgress = 17 + Math.floor((i + 1) / data.borrowers.length * 20);
+        sendProgressUpdate(borrowerProgress, `Restored borrower ${i + 1}/${data.borrowers.length}`);
       }
       
       console.log('Restoring loans...');
+      sendProgressUpdate(37, 'Restoring loans...');
       // Restore loans using the mapped borrower IDs and create loan ID mapping
       const loanIdMapping = new Map();
       
-      for (const loan of data.loans) {
+      for (let i = 0; i < data.loans.length; i++) {
+        const loan = data.loans[i];
         const newBorrowerId = borrowerIdMapping.get(loan.borrowerId);
         if (newBorrowerId) {
           // Create loan with all new fields
@@ -1549,13 +1568,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: loan.status
           }).returning();
           loanIdMapping.set(loan.id, newLoan.id);
+          
+          // Update progress for each loan
+          const loanProgress = 37 + Math.floor((i + 1) / data.loans.length * 20);
+          sendProgressUpdate(loanProgress, `Restored loan ${i + 1}/${data.loans.length}`);
         }
       }
       
       console.log('Restoring payments...');
+      sendProgressUpdate(57, 'Restoring payments...');
       // Restore payments using the mapped loan IDs
       const paymentIdMapping = new Map();
-      for (const payment of data.payments) {
+      for (let i = 0; i < data.payments.length; i++) {
+        const payment = data.payments[i];
         const newLoanId = loanIdMapping.get(payment.loanId);
         if (newLoanId) {
           const [newPayment] = await db.insert(payments).values({
@@ -1570,16 +1595,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notes: payment.notes
           }).returning();
           paymentIdMapping.set(payment.id, newPayment.id);
+          
+          // Update progress for each payment
+          const paymentProgress = 57 + Math.floor((i + 1) / data.payments.length * 15);
+          sendProgressUpdate(paymentProgress, `Restored payment ${i + 1}/${data.payments.length}`);
         }
       }
       
       console.log('Restoring loan items...');
+      sendProgressUpdate(72, 'Restoring loan items...');
       // Restore loan items
       if (data.loanItems && Array.isArray(data.loanItems)) {
         // Clear existing loan items
         await db.delete(loanItems);
         // Map old loan IDs to new ones
-        for (const item of data.loanItems) {
+        for (let i = 0; i < data.loanItems.length; i++) {
+          const item = data.loanItems[i];
           const newLoanId = loanIdMapping.get(item.loanId);
           if (newLoanId) {
             await db.insert(loanItems).values({
@@ -1591,17 +1622,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
               netWeight: item.netWeight,
               goldSilverNotes: item.goldSilverNotes
             });
+            
+            // Update progress for each loan item
+            const itemProgress = 72 + Math.floor((i + 1) / data.loanItems.length * 10);
+            sendProgressUpdate(itemProgress, `Restored loan item ${i + 1}/${data.loanItems.length}`);
           }
         }
       }
       
       console.log('Restoring payment transactions...');
+      sendProgressUpdate(82, 'Restoring payment transactions...');
       // Restore payment transactions
       if (data.paymentTransactions && Array.isArray(data.paymentTransactions)) {
         // Clear existing payment transactions
         await db.delete(paymentTransactions);
         // Map old payment IDs to new ones
-        for (const transaction of data.paymentTransactions) {
+        for (let i = 0; i < data.paymentTransactions.length; i++) {
+          const transaction = data.paymentTransactions[i];
           const newPaymentId = paymentIdMapping.get(transaction.paymentId);
           if (newPaymentId) {
             await db.insert(paymentTransactions).values({
@@ -1611,11 +1648,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               paymentMethod: transaction.paymentMethod,
               notes: transaction.notes
             });
+            
+            // Update progress for each payment transaction
+            const transactionProgress = 82 + Math.floor((i + 1) / data.paymentTransactions.length * 10);
+            sendProgressUpdate(transactionProgress, `Restored payment transaction ${i + 1}/${data.paymentTransactions.length}`);
           }
         }
       }
       
+      sendProgressUpdate(95, 'Finalizing restore...');
       console.log('Data restore completed successfully');
+      sendProgressUpdate(100, 'Restore completed successfully');
       res.json({ 
         message: 'Data restored successfully',
         stats: {
@@ -1642,6 +1685,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/test', (req, res) => {
     res.json({ message: 'API routing is working' });
   });
+
+  // SSE endpoint for restore progress
+  app.get('/api/backup/restore/progress', requireAdmin, (req, res) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    // Store the response object globally for progress updates
+    (global as any).restoreProgressRes = res;
+
+    req.on('close', () => {
+      (global as any).restoreProgressRes = null;
+    });
+  });
+
+  // Helper function to send progress updates
+  const sendProgressUpdate = (progress: number, message: string) => {
+    const progressRes = (global as any).restoreProgressRes;
+    if (progressRes) {
+      progressRes.write(`data: ${JSON.stringify({ progress, message })}\n\n`);
+    }
+  };
 
   // Create custom payment for Custom and Gold & Silver loans
   app.post('/api/loans/:loanId/payments/custom', async (req: Request, res: Response) => {

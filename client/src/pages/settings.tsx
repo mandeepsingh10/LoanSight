@@ -1,33 +1,36 @@
-import { useState, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
+import React, { useState, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
-  Download, 
-  Upload,
   Database, 
-  CheckCircle,
-  AlertCircle,
-  Trash2
-} from "lucide-react";
+  Upload, 
+  Download, 
+  CheckCircle, 
+  AlertCircle, 
+  Trash2, 
+  Shield 
+} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/providers/AuthProvider";
 
 const Settings = () => {
-  const [restoreProgress, setRestoreProgress] = useState(0);
-  const [isRestoring, setIsRestoring] = useState(false);
-  const [adminPassword, setAdminPassword] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreProgress, setRestoreProgress] = useState(0);
+  const [restoreMessage, setRestoreMessage] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const { isAdmin } = useAuth();
 
   // Create backup mutation
@@ -80,18 +83,34 @@ const Settings = () => {
     }
   });
 
-  // Restore data mutation with progress tracking
+  // Restore data mutation with real-time progress tracking
   const restoreDataMutation = useMutation({
     mutationFn: async (backupData: any) => {
       setIsRestoring(true);
-      setRestoreProgress(10);
+      setRestoreProgress(0);
+      setRestoreMessage('Starting restore...');
       
-      // Simulate progress steps
-      const updateProgress = (step: number) => {
-        setRestoreProgress(step);
+      // Connect to SSE for real-time progress
+      const eventSource = new EventSource('/api/backup/restore/progress', {
+        withCredentials: true
+      });
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setRestoreProgress(data.progress);
+          setRestoreMessage(data.message);
+        } catch (error) {
+          console.error('Error parsing SSE data:', error);
+        }
       };
       
-      updateProgress(20);
+      eventSource.onerror = (error) => {
+        console.error('SSE error:', error);
+        eventSource.close();
+      };
+      
+      setEventSource(eventSource);
       
       const response = await fetch('/api/backup/restore', {
         method: 'POST',
@@ -102,22 +121,29 @@ const Settings = () => {
         body: JSON.stringify(backupData),
       });
       
-      updateProgress(60);
+      // Close SSE connection
+      eventSource.close();
+      setEventSource(null);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      updateProgress(80);
       const result = await response.json();
-      updateProgress(100);
-      
       return result;
     },
     onSuccess: (data) => {
       setTimeout(() => {
         setIsRestoring(false);
         setRestoreProgress(0);
+        setRestoreMessage('');
+        
+        // Close SSE connection if it exists
+        if (eventSource) {
+          eventSource.close();
+          setEventSource(null);
+        }
+        
         const photoText = data.stats.photos > 0 ? 
           `, ${data.stats.photos} photos (${(data.stats.photoSize / 1024 / 1024).toFixed(1)} MB)` : '';
         const userText = data.stats.users > 0 ? `, ${data.stats.users} users` : '';
@@ -136,6 +162,14 @@ const Settings = () => {
     onError: (error) => {
       setIsRestoring(false);
       setRestoreProgress(0);
+      setRestoreMessage('');
+      
+      // Close SSE connection if it exists
+      if (eventSource) {
+        eventSource.close();
+        setEventSource(null);
+      }
+      
       toast({
         title: "Restore Failed",
         description: `Failed to restore data: ${error}`,
@@ -357,19 +391,13 @@ const Settings = () => {
               {isRestoring && (
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-white">Restoring data...</span>
+                    <span className="text-white">{restoreMessage}</span>
                     <span className="text-white">{restoreProgress}%</span>
                   </div>
                   <Progress 
                     value={restoreProgress} 
                     className="w-full bg-black"
                   />
-                  <p className="text-xs text-white/70">
-                    {restoreProgress < 30 && "Preparing restoration..."}
-                    {restoreProgress >= 30 && restoreProgress < 70 && "Processing backup data..."}
-                    {restoreProgress >= 70 && restoreProgress < 95 && "Updating database..."}
-                    {restoreProgress >= 95 && "Finalizing..."}
-                  </p>
                 </div>
               )}
             </div>
