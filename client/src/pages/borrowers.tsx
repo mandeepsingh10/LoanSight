@@ -10,6 +10,7 @@ import { useContext } from "react";
 import { AppContext } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 // Stylized mountain of coins SVG icon
@@ -292,14 +293,9 @@ const Borrowers = () => {
         </TabsList>
 
         <TabsContent value="cash">
-          {isLoading ? (
-            <div className="bg-black rounded-lg border border-gray-800 p-6">
-              <Skeleton className="h-10 w-full mb-4 bg-gray-800" />
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full bg-gray-800" />
-                ))}
-              </div>
+          {isLoading || loansLoading ? (
+            <div className="bg-black rounded-lg border border-gray-800 p-12">
+              <LoadingSpinner size="lg" text="Loading borrowers and loan data..." />
             </div>
           ) : sortedBorrowers && sortedBorrowers.length > 0 ? (
             <>
@@ -348,14 +344,9 @@ const Borrowers = () => {
         </TabsContent>
 
         <TabsContent value="gold-silver">
-          {isLoading ? (
-            <div className="bg-black rounded-lg border border-gray-800 p-6">
-              <Skeleton className="h-10 w-full mb-4 bg-gray-800" />
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full bg-gray-800" />
-                ))}
-              </div>
+          {isLoading || loansLoading ? (
+            <div className="bg-black rounded-lg border border-gray-800 p-12">
+              <LoadingSpinner size="lg" text="Loading borrowers and loan data..." />
             </div>
           ) : sortedBorrowers && sortedBorrowers.length > 0 ? (
             <>

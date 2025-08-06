@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { AlertTriangle, User, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { formatCurrency } from "@/lib/utils";
 import { formatDate } from "@/lib/date-utils";
 import { apiRequest } from "@/lib/queryClient";
@@ -165,7 +166,7 @@ export default function Defaulters() {
     return (
       <div className="p-6 space-y-6 min-h-screen bg-black">
         <div className="text-center py-10">
-          <p className="text-white/50">Loading defaulter information...</p>
+          <LoadingSpinner size="lg" text="Loading defaulter information..." />
         </div>
       </div>
     );

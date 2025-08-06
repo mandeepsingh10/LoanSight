@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, Eye, ChevronDown, ChevronRight } from "lucide-react";
 import StatusBadge from "@/components/ui/status-badge";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import {
@@ -99,7 +100,7 @@ const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }:
   };
 
   // Fetch loans for all borrowers
-  const { data: borrowersWithLoans = [] } = useQuery({
+  const { data: borrowersWithLoans = [], isLoading: loansLoading } = useQuery({
     queryKey: ["/api/borrowers", "with-loans", borrowers.map(b => b.id), searchQuery],
     queryFn: async () => {
       const borrowersWithLoansData: BorrowerWithLoans[] = [];
@@ -406,6 +407,15 @@ const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }:
   console.log("BorrowerTable received borrowers:", borrowers.length);
   console.log("BorrowerTable searchQuery:", searchQuery);
   console.log("BorrowerTable borrowersWithLoans:", borrowersWithLoans.length);
+
+  // Show loading state while fetching loan data
+  if (loansLoading) {
+    return (
+      <div className="bg-black rounded-lg border border-gray-700 p-12">
+        <LoadingSpinner size="md" text="Loading loan data..." />
+      </div>
+    );
+  }
 
   return (
     <>

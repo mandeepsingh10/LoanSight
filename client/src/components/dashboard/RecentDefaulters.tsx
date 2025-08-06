@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, User } from "lucide-react";
 import { formatDate } from "@/lib/date-utils";
@@ -186,14 +187,9 @@ const RecentDefaulters = () => {
             <User size={20} className="text-red-500" />
             Defaulters
           </CardTitle>
-          <Skeleton className="h-8 w-24" />
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="space-y-3 p-6">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full bg-gray-800" />
-            ))}
-          </div>
+        <CardContent className="p-6">
+          <LoadingSpinner size="md" text="Loading defaulters..." />
         </CardContent>
       </Card>
     );
