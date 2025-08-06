@@ -68,7 +68,11 @@ const Settings = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `loan-management-backup-${new Date().toISOString().split('T')[0]}.json`;
+      const now = new Date();
+      const day = now.getDate().toString().padStart(2, '0');
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const year = now.getFullYear();
+      a.download = `backup-${day}-${month}-${year}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
