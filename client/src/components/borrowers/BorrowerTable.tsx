@@ -411,8 +411,8 @@ const BorrowerTable = ({ borrowers, searchQuery = "", searchFilter, activeTab }:
   // Show loading state while fetching loan data
   if (loansLoading) {
     return (
-      <div className="bg-black rounded-lg border border-gray-700 p-12">
-        <LoadingSpinner size="md" text="Loading loan data..." />
+      <div className="bg-black rounded-lg border border-gray-800 p-12">
+        <LoadingSpinner size="lg" text="Loading loan data..." />
       </div>
     );
   }

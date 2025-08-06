@@ -295,7 +295,7 @@ const Borrowers = () => {
         <TabsContent value="cash">
           {isLoading || loansLoading ? (
             <div className="bg-black rounded-lg border border-gray-800 p-12">
-              <LoadingSpinner size="lg" text="Loading borrowers and loan data..." />
+              <LoadingSpinner size="lg" text={isLoading ? "Loading borrowers..." : "Loading loan data..."} />
             </div>
           ) : sortedBorrowers && sortedBorrowers.length > 0 ? (
             <>
@@ -346,7 +346,7 @@ const Borrowers = () => {
         <TabsContent value="gold-silver">
           {isLoading || loansLoading ? (
             <div className="bg-black rounded-lg border border-gray-800 p-12">
-              <LoadingSpinner size="lg" text="Loading borrowers and loan data..." />
+              <LoadingSpinner size="lg" text={isLoading ? "Loading borrowers..." : "Loading loan data..."} />
             </div>
           ) : sortedBorrowers && sortedBorrowers.length > 0 ? (
             <>
