@@ -828,7 +828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Loan routes
   app.get('/api/loans', requireAuth, async (req, res) => {
     try {
-      const loans = await storage.getAllLoans();
+      const loans = await storage.getLoans();
       
       // Add next payment information and items to each loan
       const loansWithNextPayment = await Promise.all(
